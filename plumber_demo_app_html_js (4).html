@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Plumber Scheduling – Demo</title>
+        <style>
+            :root {
+                --bg: #0b1020;
+                --panel: #121833;
+                --muted: #1b2347;
+                --text: #e7ecff;
+                --sub: #a7b0d9;
+                --green: #22c55e;
+                --red: #ef4444;
+                --gray: #9ca3af;
+                --yellow: #f59e0b;
+                --blue: #3b82f6;
+                --card: #0f1530;
+                --border: #2a356b;
+                --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                height: 100%;
+            }
+            body {
+                margin: 0;
+                background: linear-gradient(180deg, #0b1020, #0b1226);
+                color: var(--text);
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+                    Helvetica, Arial;
+            }
+
+            .layout {
+                display: grid;
+                grid-template-columns: 240px 1fr;
+                min-height: 100vh;
+            }
+            @media (max-width: 900px) {
+                .layout {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            /* Sidebar */
+            .sidebar {
+                background: var(--panel);
+                border-right: 1px solid var(--border);
+                padding: 16px;
+                position: sticky;
+                top: 0;
+                height: 100vh;
+            }
+            .brand {
+                font-weight: 800;
+                letter-spacing: 0.5px;
+                margin-bottom: 12px;
+            }
+            .nav {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .nav button {
+                background: var(--muted);
+                border: 1px solid var(--border);
+                color: var(--text);
+                padding: 10px 12px;
+                border-radius: 10px;
+                text-align: left;
+                cursor: pointer;
+            }
+            .nav button.active {
+                outline: 2px solid var(--blue);
+            }
+
+            /* Panels */
+            .page {
+                padding: 16px;
+            }
+            .panel {
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                box-shadow: var(--shadow);
+                margin-bottom: 16px;
+            }
+            .panel h2 {
+                margin: 0;
+                padding: 16px 20px;
+                border-bottom: 1px solid var(--border);
+                font-size: 18px;
+            }
+            .panel-body {
+                padding: 16px;
+            }
+
+            .app {
+                display: grid;
+                grid-template-columns: 1.2fr 0.8fr;
+                gap: 16px;
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+            @media (max-width: 1100px) {
+                .app {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            .grid-2 {
+                display: grid;
+                grid-template-columns: 300px 1fr;
+                gap: 16px;
+            }
+            @media (max-width: 900px) {
+                .grid-2 {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            /* Month calendar */
+            .month {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+            }
+            .month header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--border);
+            }
+            .month header button {
+                background: var(--muted);
+                border: 1px solid var(--border);
+                color: var(--text);
+                padding: 6px 10px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .month header .title {
+                font-weight: 600;
+            }
+            .dow,
+            .days {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+            }
+            .dow div {
+                padding: 6px 0;
+                text-align: center;
+                color: var(--sub);
+                font-size: 12px;
+            }
+            .day {
+                aspect-ratio: 1/1;
+                position: relative;
+                border-right: 1px solid var(--border);
+                border-bottom: 1px solid var(--border);
+                padding: 6px;
+                cursor: pointer;
+            }
+            .day.out {
+                opacity: 0.35;
+            }
+            .day:hover {
+                background: #121a40;
+            }
+            .day .num {
+                font-size: 12px;
+                color: var(--sub);
+            }
+            .dots {
+                position: absolute;
+                left: 6px;
+                bottom: 6px;
+                display: flex;
+                gap: 3px;
+            }
+            .dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 999px;
+                opacity: 0.85;
+            }
+
+            /* Day schedule */
+            .schedule {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 8px;
+            }
+            .legend {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+            .pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                border: 1px solid var(--border);
+                background: var(--muted);
+                padding: 6px 10px;
+                border-radius: 999px;
+                font-size: 12px;
+                color: var(--sub);
+            }
+            .swatch {
+                width: 12px;
+                height: 12px;
+                border-radius: 3px;
+            }
+
+            .slots {
+                display: grid;
+                grid-template-columns: 100px 1fr;
+                gap: 6px;
+                max-height: 520px;
+                overflow: auto;
+                border-top: 1px dashed var(--border);
+            }
+            .trow {
+                display: grid;
+                grid-template-columns: 100px 1fr;
+                gap: 6px;
+                align-items: center;
+                padding: 6px 0;
+                border-bottom: 1px dashed #202a5a;
+            }
+            .time {
+                color: var(--sub);
+                font-size: 12px;
+                text-align: right;
+                padding-right: 6px;
+            }
+            .slot {
+                height: 28px;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .FREE {
+                background: rgba(34, 197, 94, 0.12);
+                border-color: rgba(34, 197, 94, 0.35);
+                color: #b9f6ca;
+            }
+            .TEMP {
+                background: rgba(156, 163, 175, 0.18);
+                border-color: rgba(156, 163, 175, 0.45);
+                color: #e5e7eb;
+            }
+            .BOOKED {
+                background: rgba(239, 68, 68, 0.15);
+                border-color: rgba(239, 68, 68, 0.5);
+                color: #fecaca;
+            }
+
+            .controls {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin: 10px 0;
+            }
+            .controls select,
+            .controls input,
+            .controls button {
+                background: var(--muted);
+                border: 1px solid var(--border);
+                color: var(--text);
+                padding: 8px 10px;
+                border-radius: 10px;
+            }
+            .controls button {
+                cursor: pointer;
+            }
+
+            /* Mail simulator */
+            .mail-list {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .mail {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 12px;
+            }
+            .subj {
+                font-weight: 700;
+                margin-bottom: 6px;
+            }
+            .meta {
+                color: var(--sub);
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+            .actions {
+                display: flex;
+                gap: 8px;
+                margin-top: 8px;
+            }
+            .btn {
+                border: 1px solid var(--border);
+                background: var(--muted);
+                color: var(--text);
+                padding: 6px 10px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .btn.approve {
+                background: rgba(34, 197, 94, 0.18);
+            }
+            .btn.reject {
+                background: rgba(239, 68, 68, 0.18);
+            }
+
+            .footer {
+                color: var(--sub);
+                font-size: 12px;
+                text-align: center;
+                margin-top: 8px;
+            }
+
+            /* Client page */
+            .client-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            @media (max-width: 1000px) {
+                .client-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .form-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .field {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                margin-bottom: 10px;
+            }
+            .field input,
+            .field select,
+            .field textarea {
+                background: var(--muted);
+                border: 1px solid var(--border);
+                color: var(--text);
+                padding: 10px;
+                border-radius: 10px;
+            }
+            .tag {
+                display: inline-block;
+                background: var(--muted);
+                border: 1px solid var(--border);
+                padding: 4px 8px;
+                border-radius: 999px;
+                color: var(--sub);
+                font-size: 12px;
+            }
+            .timegrid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 8px;
+            }
+            .timebtn {
+                border: 1px solid var(--border);
+                background: var(--muted);
+                color: var(--text);
+                padding: 8px 10px;
+                border-radius: 10px;
+                cursor: pointer;
+                text-align: center;
+            }
+            .timebtn.selected {
+                outline: 2px solid var(--blue);
+            }
+
+            .request-list {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .note {
+                color: var(--sub);
+                font-size: 12px;
+            }
+            .error {
+                color: #fecaca;
+                background: rgba(239, 68, 68, 0.12);
+                border: 1px solid rgba(239, 68, 68, 0.5);
+                padding: 8px 10px;
+                border-radius: 8px;
+            }
+            .hidden {
+                display: none !important;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="layout">
+            <aside class="sidebar">
+                <div class="brand">🔧 Plumber Demo</div>
+                <div class="nav">
+                    <button id="nav-admin" class="active">Admin</button>
+                    <button id="nav-client">Client Booking</button>
+                </div>
+                <p class="note" style="margin-top: 12px">
+                    State persists in your browser via <strong>localStorage</strong>.
+                </p>
+                <button id="btnClear" class="btn" style="margin-top: 12px; width: 100%">
+                    🧹 Clean data (reset)
+                </button>
+            </aside>
+
+            <!-- ADMIN PAGE -->
+            <main id="page-admin" class="page">
+                <section class="panel">
+                    <h2>Admin Dashboard – Calendar & Availability</h2>
+                    <div class="panel-body">
+                        <div class="grid-2">
+                            <div>
+                                <div class="month" id="month"></div>
+                            </div>
+                            <div>
+                                <div class="schedule">
+                                    <div class="legend">
+                                        <span class="pill"
+                                            ><span
+                                                class="swatch"
+                                                style="background: var(--green)"
+                                            ></span>
+                                            Free</span
+                                        >
+                                        <span class="pill"
+                                            ><span
+                                                class="swatch"
+                                                style="background: var(--gray)"
+                                            ></span>
+                                            Temp (held)</span
+                                        >
+                                        <span class="pill"
+                                            ><span
+                                                class="swatch"
+                                                style="background: var(--red)"
+                                            ></span>
+                                            Booked</span
+                                        >
+                                    </div>
+
+                                    <div class="controls">
+                                        <label>
+                                            Date:
+                                            <input type="date" id="datePicker" />
+                                        </label>
+                                        <label>
+                                            Start:
+                                            <select id="startTime"></select>
+                                        </label>
+                                        <label>
+                                            End:
+                                            <select id="endTime"></select>
+                                        </label>
+                                        <label>
+                                            Client Email:
+                                            <input
+                                                id="clientEmail"
+                                                type="email"
+                                                placeholder="client@example.com"
+                                            />
+                                        </label>
+                                        <button id="btnHold">Send temp appointment email</button>
+                                        <button id="btnResetDay" title="Clear day to all free">
+                                            Reset day
+                                        </button>
+                                    </div>
+
+                                    <div id="slots" class="slots" aria-live="polite"></div>
+                                </div>
+                                <div class="footer">
+                                    Select a day, choose start/end, and click “Send temp appointment
+                                    email”. The email appears in the Mail Simulator → client
+                                    Approve/Reject updates the calendar.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h2>Mail Simulator (Client Inbox)</h2>
+                    <div class="panel-body">
+                        <div id="mailList" class="mail-list"></div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h2>Incoming Booking Requests</h2>
+                    <div class="panel-body">
+                        <div id="requestList" class="request-list"></div>
+                        <div class="note">
+                            Requests are created from the Client Booking page. Propose a time to
+                            send a TEMP hold email, or reject.
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <!-- CLIENT PAGE -->
+            <main id="page-client" class="page" style="display: none">
+                <section class="panel">
+                    <h2>Client Booking – Choose Service & Time</h2>
+                    <div class="panel-body">
+                        <div id="c_error" class="error hidden" style="margin-bottom: 12px"></div>
+                        <div class="client-grid">
+                            <!-- Left: service & details -->
+                            <div>
+                                <div class="field">
+                                    <label>Your name</label>
+                                    <input id="c_name" placeholder="Jane Doe" />
+                                </div>
+                                <div class="field">
+                                    <label>Your email</label>
+                                    <input
+                                        id="c_email"
+                                        type="email"
+                                        placeholder="jane@example.com"
+                                    />
+                                </div>
+                                <div class="field">
+                                    <label>Service</label>
+                                    <select id="c_service"></select>
+                                </div>
+                                <div id="c_questions"></div>
+
+                                <div class="field">
+                                    <label>Estimated price</label>
+                                    <div id="c_estimate" class="tag">Select a service…</div>
+                                </div>
+                            </div>
+
+                            <!-- Right: time selection -->
+                            <div id="client-right" class="hidden">
+                                <div class="field">
+                                    <label>Date</label>
+                                    <input type="date" id="c_date" />
+                                </div>
+                                <div class="field">
+                                    <label>Available times (free slots only)</label>
+                                    <div id="c_times" class="timegrid"></div>
+                                </div>
+                                <div class="field">
+                                    <label>Selected time</label>
+                                    <div id="c_selected" class="tag">None</div>
+                                </div>
+                                <button id="c_send" class="btn" style="padding: 10px 14px">
+                                    Send Request
+                                </button>
+                                <div id="c_result" class="note" style="margin-top: 8px"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <script>
+            // --- Config ---
+            const WORK_START = 8; // 08:00
+            const WORK_END = 18; // 18:00
+            const SLOT_MIN = 30; // 30-min slots
+            const STORAGE_KEY = 'plumberDemoState_v3';
+
+            // Demo services catalog
+            const SERVICES = [
+                {
+                    id: 'S1',
+                    name: 'Blockage / Verstopping',
+                    type: 'EASY',
+                    durationSlots: 2, // 60m
+                    base: 95,
+                    questions: [
+                        {
+                            key: 'location',
+                            label: 'Location',
+                            type: 'select',
+                            options: ['Kitchen', 'Bathroom', 'Toilet']
+                        },
+                        {
+                            key: 'severity',
+                            label: 'Severity',
+                            type: 'select',
+                            options: ['Slow drain', 'Fully blocked']
+                        },
+                        { key: 'afterHours', label: 'After-hours?', type: 'boolean' }
+                    ],
+                    price: (ans) => {
+                        let p = 95; // base
+                        if (ans.severity === 'Fully blocked') p += 40;
+                        if (ans.location === 'Toilet') p += 20;
+                        if (ans.afterHours === true) p += 60;
+                        return p;
+                    }
+                },
+                {
+                    id: 'S2',
+                    name: 'Bathroom Renovation (Quotation)',
+                    type: 'COMPLEX',
+                    durationSlots: 4, // 2h site visit slot (demo)
+                    base: 0,
+                    questions: [
+                        { key: 'area', label: 'Approx. bathroom size (m²)', type: 'number' },
+                        { key: 'shower', label: 'Shower?', type: 'boolean' },
+                        { key: 'bathtub', label: 'Bathtub?', type: 'boolean' }
+                    ],
+                    price: (ans) => null // quotation
+                }
+            ];
+
+            // --- Utility time helpers ---
+            function formatDateKey(d) {
+                const y = d.getFullYear();
+                const m = ('0' + (d.getMonth() + 1)).slice(-2);
+                const day = ('0' + d.getDate()).slice(-2);
+                return `${y}-${m}-${day}`;
+            }
+            function parseDateKey(key) {
+                const [y, m, d] = key.split('-').map(Number);
+                return new Date(y, m - 1, d);
+            }
+            function minutesToHHMM(min) {
+                const h = Math.floor(min / 60),
+                    m = min % 60;
+                return `${('' + h).padStart(2, '0')}:${('' + m).padStart(2, '0')}`;
+            }
+            function hhmmToMinutes(hhmm) {
+                const [h, m] = hhmm.split(':').map(Number);
+                return h * 60 + m;
+            }
+
+            // --- State ---
+            const state = {
+                monthCursor: new Date(),
+                selectedDate: new Date(),
+                schedule: {}, // dateKey -> ['FREE'|'TEMP'|'BOOKED']
+                emails: [], // {id, subj, body, apptId, status, to}
+                appts: {}, // apptId -> {dateKey,startIdx,endIdx,status}
+                requests: [], // array of request objects (client → admin)
+                nextApptId: 1,
+                nextEmailId: 1,
+                nextRequestId: 1,
+                currentPage: 'admin',
+                clientSelection: { serviceId: null, dateKey: null, startIdx: null, endIdx: null }
+            };
+
+            // --- Persistence ---
+            function saveState() {
+                const data = {
+                    monthCursor: state.monthCursor.toISOString(),
+                    selectedDate: state.selectedDate.toISOString(),
+                    schedule: state.schedule,
+                    emails: state.emails,
+                    appts: state.appts,
+                    requests: state.requests,
+                    nextApptId: state.nextApptId,
+                    nextEmailId: state.nextEmailId,
+                    nextRequestId: state.nextRequestId
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+            function loadState() {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return false;
+                try {
+                    const data = JSON.parse(raw);
+                    if (data.monthCursor) state.monthCursor = new Date(data.monthCursor);
+                    if (data.selectedDate) state.selectedDate = new Date(data.selectedDate);
+                    Object.assign(state.schedule, data.schedule || {});
+                    state.emails = data.emails || [];
+                    state.appts = data.appts || {};
+                    state.requests = data.requests || [];
+                    state.nextApptId = data.nextApptId || 1;
+                    state.nextEmailId = data.nextEmailId || 1;
+                    state.nextRequestId = data.nextRequestId || 1;
+                    return true;
+                } catch (e) {
+                    console.warn('Failed to load saved state', e);
+                    return false;
+                }
+            }
+
+            // Initialize default day slots as FREE
+            function ensureDay(dateKey) {
+                if (!state.schedule[dateKey]) {
+                    const slots = [];
+                    const total = ((WORK_END - WORK_START) * 60) / SLOT_MIN;
+                    for (let i = 0; i < total; i++) slots.push('FREE');
+                    state.schedule[dateKey] = slots;
+                }
+            }
+
+            // --- Month calendar rendering (Admin) ---
+            function renderMonth() {
+                const wrap = document.getElementById('month');
+                if (!wrap) return;
+                wrap.innerHTML = '';
+                const d = new Date(
+                    state.monthCursor.getFullYear(),
+                    state.monthCursor.getMonth(),
+                    1
+                );
+                const year = d.getFullYear();
+                const month = d.getMonth();
+                const monthName = d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+
+                const header = document.createElement('header');
+                const prev = document.createElement('button');
+                prev.textContent = '‹ Prev';
+                prev.onclick = () => {
+                    state.monthCursor = new Date(year, month - 1, 1);
+                    renderMonth();
+                    saveState();
+                };
+                const next = document.createElement('button');
+                next.textContent = 'Next ›';
+                next.onclick = () => {
+                    state.monthCursor = new Date(year, month + 1, 1);
+                    renderMonth();
+                    saveState();
+                };
+                const title = document.createElement('div');
+                title.className = 'title';
+                title.textContent = monthName;
+                header.append(prev, title, next);
+
+                const dow = document.createElement('div');
+                dow.className = 'dow';
+                ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((d) => {
+                    const el = document.createElement('div');
+                    el.textContent = d;
+                    dow.appendChild(el);
+                });
+
+                const days = document.createElement('div');
+                days.className = 'days';
+                const firstDow = (d.getDay() + 6) % 7; // Monday=0
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                for (let i = 0; i < firstDow; i++) {
+                    const dd = new Date(year, month, -firstDow + i + 1);
+                    days.appendChild(dayCell(dd, true));
+                }
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const dd = new Date(year, month, i);
+                    days.appendChild(dayCell(dd, false));
+                }
+                const totalCells = firstDow + daysInMonth;
+                const trailing = (7 - (totalCells % 7)) % 7;
+                for (let i = 1; i <= trailing; i++) {
+                    const dd = new Date(year, month + 1, i);
+                    days.appendChild(dayCell(dd, true));
+                }
+
+                wrap.append(header, dow, days);
+            }
+
+            function dayCell(date, isOut) {
+                const dateKey = formatDateKey(date);
+                ensureDay(dateKey);
+                const cell = document.createElement('div');
+                cell.className = 'day' + (isOut ? ' out' : '');
+                if (formatDateKey(state.selectedDate) === dateKey)
+                    cell.style.outline = '2px solid var(--blue)';
+                const num = document.createElement('div');
+                num.className = 'num';
+                num.textContent = date.getDate();
+                const dots = document.createElement('div');
+                dots.className = 'dots';
+                const slots = state.schedule[dateKey];
+                const hasBooked = slots.includes('BOOKED');
+                const hasTemp = slots.includes('TEMP');
+                if (hasBooked) {
+                    const el = document.createElement('div');
+                    el.className = 'dot';
+                    el.style.background = 'var(--red)';
+                    dots.appendChild(el);
+                }
+                if (hasTemp) {
+                    const el = document.createElement('div');
+                    el.className = 'dot';
+                    el.style.background = 'var(--gray)';
+                    dots.appendChild(el);
+                }
+                if (!hasBooked && !hasTemp) {
+                    const el = document.createElement('div');
+                    el.className = 'dot';
+                    el.style.background = 'var(--green)';
+                    dots.appendChild(el);
+                }
+
+                cell.append(num, dots);
+                cell.onclick = () => {
+                    state.selectedDate = new Date(date);
+                    syncDatePicker();
+                    renderMonth();
+                    renderDay();
+                    saveState();
+                };
+                return cell;
+            }
+
+            function renderDay() {
+                const container = document.getElementById('slots');
+                if (!container) return;
+                container.innerHTML = '';
+                const dateKey = formatDateKey(state.selectedDate);
+                ensureDay(dateKey);
+                const slots = state.schedule[dateKey];
+                const startMin = WORK_START * 60;
+                const total = slots.length;
+
+                for (let i = 0; i < total; i++) {
+                    const row = document.createElement('div');
+                    row.className = 'trow';
+                    const label = document.createElement('div');
+                    label.className = 'time';
+                    label.textContent = minutesToHHMM(startMin + i * SLOT_MIN);
+                    const box = document.createElement('div');
+                    box.className = 'slot ' + slots[i];
+                    box.textContent = slots[i];
+                    box.title = 'Click to toggle FREE ↔ TEMP (demo)';
+                    box.onclick = () => {
+                        if (slots[i] === 'FREE') {
+                            slots[i] = 'TEMP';
+                        } else if (slots[i] === 'TEMP') {
+                            slots[i] = 'FREE';
+                        }
+                        renderDay();
+                        renderMonth();
+                        saveState();
+                    };
+                    row.append(label, box);
+                    container.appendChild(row);
+                }
+            }
+
+            // --- Controls: time selects & date picker (Admin) ---
+            function buildTimeOptions() {
+                const startSel = document.getElementById('startTime');
+                const endSel = document.getElementById('endTime');
+                if (!startSel || !endSel) return;
+                startSel.innerHTML = '';
+                endSel.innerHTML = '';
+                const startMin = WORK_START * 60;
+                const total = ((WORK_END - WORK_START) * 60) / SLOT_MIN;
+                for (let i = 0; i <= total; i++) {
+                    const t = minutesToHHMM(startMin + i * SLOT_MIN);
+                    const opt1 = document.createElement('option');
+                    opt1.value = t;
+                    opt1.textContent = t;
+                    startSel.appendChild(opt1);
+                    const opt2 = document.createElement('option');
+                    opt2.value = t;
+                    opt2.textContent = t;
+                    endSel.appendChild(opt2);
+                }
+                startSel.selectedIndex = 0;
+                endSel.selectedIndex = 2; // 1 hour default
+            }
+
+            function syncDatePicker() {
+                const dp = document.getElementById('datePicker');
+                if (!dp) return;
+                dp.value = formatDateKey(state.selectedDate);
+            }
+
+            // --- Helpers ---
+            function emailValid(v) {
+                return typeof v === 'string' && v.includes('@') && v.includes('.');
+            }
+            function showClientError(msg) {
+                const box = document.getElementById('c_error');
+                if (!box) return;
+                box.textContent = msg;
+                box.classList.remove('hidden');
+            }
+            function clearClientError() {
+                const box = document.getElementById('c_error');
+                if (!box) return;
+                box.textContent = '';
+                box.classList.add('hidden');
+            }
+
+            // --- Mail simulator ---
+            function pushEmail({ subj, body, apptId, to }) {
+                const mail = { id: state.nextEmailId++, subj, body, apptId, status: 'SENT', to };
+                state.emails.unshift(mail); // newest first
+                renderMail();
+                saveState();
+            }
+
+            function renderMail() {
+                const list = document.getElementById('mailList');
+                if (!list) return;
+                list.innerHTML = '';
+                if (state.emails.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.style.color = 'var(--sub)';
+                    empty.textContent =
+                        'No messages yet — create a temp appointment to send an email.';
+                    list.appendChild(empty);
+                    return;
+                }
+                state.emails.forEach((m) => {
+                    const card = document.createElement('div');
+                    card.className = 'mail';
+                    const subj = document.createElement('div');
+                    subj.className = 'subj';
+                    subj.textContent = m.subj;
+                    const meta = document.createElement('div');
+                    meta.className = 'meta';
+                    meta.textContent = `To: ${m.to || 'client@example.com'} • #${m.id}`;
+                    const body = document.createElement('div');
+                    body.innerHTML = m.body;
+                    card.append(subj, meta, body);
+
+                    const appt = state.appts[m.apptId];
+                    if (appt && appt.status === 'TEMP') {
+                        const actions = document.createElement('div');
+                        actions.className = 'actions';
+                        const ok = document.createElement('button');
+                        ok.className = 'btn approve';
+                        ok.textContent = 'Approve';
+                        ok.onclick = () => confirmAppointment(m.apptId);
+                        const rej = document.createElement('button');
+                        rej.className = 'btn reject';
+                        rej.textContent = 'Reject';
+                        rej.onclick = () => rejectAppointment(m.apptId);
+                        actions.append(ok, rej);
+                        card.appendChild(actions);
+                    } else if (appt) {
+                        const info = document.createElement('div');
+                        info.className = 'meta';
+                        info.textContent = `Status: ${appt.status}`;
+                        card.appendChild(info);
+                    }
+                    list.appendChild(card);
+                });
+            }
+
+            // --- Appointment creation & transitions ---
+            function createTempAppointment(dateKey, startHHMM, endHHMM, email) {
+                ensureDay(dateKey);
+                const slots = state.schedule[dateKey];
+                const startIdx = (hhmmToMinutes(startHHMM) - WORK_START * 60) / SLOT_MIN;
+                const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
+                if (endIdx <= startIdx) {
+                    alert('End time must be after start time.');
+                    return null;
+                }
+                for (let i = startIdx; i < endIdx; i++) {
+                    if (slots[i] !== 'FREE') {
+                        alert('Selected range overlaps with non-free slots.');
+                        return null;
+                    }
+                }
+                for (let i = startIdx; i < endIdx; i++) slots[i] = 'TEMP';
+                const id = state.nextApptId++;
+                state.appts[id] = { dateKey, startIdx, endIdx, status: 'TEMP' };
+                renderDay();
+                renderMonth();
+                saveState();
+
+                const subj = `Your appointment is temporarily reserved – please confirm`;
+                const body = `<p>Thanks for your request.</p>
+        <p><strong>Date:</strong> ${dateKey}<br/>
+        <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
+        <p>This booking is <em>temporary</em>. Please Approve or Reject below.</p>`;
+                pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
+                return id;
+            }
+
+            function confirmAppointment(apptId) {
+                const appt = state.appts[apptId];
+                if (!appt) return;
+                const slots = state.schedule[appt.dateKey];
+                for (let i = appt.startIdx; i < appt.endIdx; i++) slots[i] = 'BOOKED';
+                appt.status = 'CONFIRMED';
+                renderDay();
+                renderMonth();
+                renderMail();
+                saveState();
+            }
+
+            function rejectAppointment(apptId) {
+                const appt = state.appts[apptId];
+                if (!appt) return;
+                const slots = state.schedule[appt.dateKey];
+                for (let i = appt.startIdx; i < appt.endIdx; i++) slots[i] = 'FREE';
+                appt.status = 'REJECTED';
+                renderDay();
+                renderMonth();
+                renderMail();
+                saveState();
+            }
+
+            // --- Requests (Admin) ---
+            function renderRequests() {
+                const list = document.getElementById('requestList');
+                if (!list) return;
+                list.innerHTML = '';
+                if (state.requests.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'note';
+                    empty.textContent = 'No requests yet.';
+                    list.appendChild(empty);
+                    return;
+                }
+                state.requests.forEach((req) => {
+                    const card = document.createElement('div');
+                    card.className = 'mail';
+                    const subj = document.createElement('div');
+                    subj.className = 'subj';
+                    subj.textContent = `${req.customer.name} – ${req.serviceName}`;
+                    const meta = document.createElement('div');
+                    meta.className = 'meta';
+                    const prefTime = req.preferred?.dateKey
+                        ? `${req.preferred.dateKey} ${req.preferred.startHHMM}–${req.preferred.endHHMM}`
+                        : '—';
+                    meta.textContent = `#REQ${req.id} • ${new Date(
+                        req.createdAt
+                    ).toLocaleString()} • Preferred: ${prefTime} • Status: ${req.status}`;
+                    const body = document.createElement('div');
+                    const estText =
+                        req.estimate == null
+                            ? 'Quotation will be provided'
+                            : `€${req.estimate.toFixed(2)}`;
+                    body.innerHTML = `<p><strong>Estimate:</strong> ${estText}</p><pre style="white-space:pre-wrap">${JSON.stringify(
+                        req.answers,
+                        null,
+                        2
+                    )}</pre>`;
+                    card.append(subj, meta, body);
+
+                    // actions
+                    const actions = document.createElement('div');
+                    actions.className = 'actions';
+
+                    const btnPropReq = document.createElement('button');
+                    btnPropReq.className = 'btn approve';
+                    btnPropReq.textContent = 'Propose Requested Time';
+                    btnPropReq.onclick = () => {
+                        if (!req.preferred?.dateKey) {
+                            alert('No preferred time selected by client.');
+                            return;
+                        }
+                        let apptId;
+                        if (req.hold) {
+                            apptId = createTempAppointmentFromHold(
+                                req.hold.dateKey,
+                                req.hold.startIdx,
+                                req.hold.endIdx,
+                                req.customer.email
+                            );
+                        } else {
+                            apptId = createTempAppointment(
+                                req.preferred.dateKey,
+                                req.preferred.startHHMM,
+                                req.preferred.endHHMM,
+                                req.customer.email
+                            );
+                        }
+                        if (apptId) {
+                            req.status = 'PROPOSED';
+                            req.apptId = apptId;
+                            saveState();
+                            renderRequests();
+                        }
+                    };
+
+                    const customWrap = document.createElement('div');
+                    customWrap.style.display = 'grid';
+                    customWrap.style.gridTemplateColumns = '1fr 1fr 1fr auto';
+                    customWrap.style.gap = '6px';
+                    customWrap.style.marginTop = '8px';
+                    const d = document.createElement('input');
+                    d.type = 'date';
+                    d.value = req.preferred?.dateKey || formatDateKey(new Date());
+                    const s = document.createElement('select');
+                    const e = document.createElement('select');
+                    [s, e].forEach((sel) => {
+                        const startMin = WORK_START * 60;
+                        const total = ((WORK_END - WORK_START) * 60) / SLOT_MIN;
+                        sel.innerHTML = '';
+                        for (let i = 0; i <= total; i++) {
+                            const t = minutesToHHMM(startMin + i * SLOT_MIN);
+                            const o = document.createElement('option');
+                            o.value = t;
+                            o.textContent = t;
+                            sel.appendChild(o);
+                        }
+                    });
+                    const btnProp = document.createElement('button');
+                    btnProp.className = 'btn';
+                    btnProp.textContent = 'Propose Custom Time';
+                    btnProp.onclick = () => {
+                        releaseHold(req);
+                        const apptId = createTempAppointment(
+                            d.value,
+                            s.value,
+                            e.value,
+                            req.customer.email
+                        );
+                        if (apptId) {
+                            req.status = 'PROPOSED';
+                            req.apptId = apptId;
+                            req.preferred = {
+                                dateKey: d.value,
+                                startHHMM: s.value,
+                                endHHMM: e.value
+                            };
+                            saveState();
+                            renderRequests();
+                        }
+                    };
+                    customWrap.append(d, s, e, btnProp);
+
+                    const btnReject = document.createElement('button');
+                    btnReject.className = 'btn reject';
+                    btnReject.textContent = 'Reject Request';
+                    btnReject.onclick = () => {
+                        releaseHold(req);
+                        req.status = 'REJECTED';
+                        saveState();
+                        renderRequests();
+                        pushEmail({
+                            subj: 'Your request was reviewed',
+                            body: `<p>We couldn't schedule the requested time. Please reply to choose another slot.</p>`,
+                            apptId: null,
+                            to: req.customer.email
+                        });
+                    };
+
+                    actions.append(btnPropReq, btnReject);
+                    card.appendChild(actions);
+                    card.appendChild(customWrap);
+
+                    list.appendChild(card);
+                });
+            }
+
+            function releaseHold(req) {
+                if (req?.hold) {
+                    const { dateKey, startIdx, endIdx } = req.hold;
+                    ensureDay(dateKey);
+                    for (let i = startIdx; i < endIdx; i++) {
+                        if (state.schedule[dateKey][i] === 'TEMP')
+                            state.schedule[dateKey][i] = 'FREE';
+                    }
+                    delete req.hold;
+                    renderDay();
+                    renderMonth();
+                    saveState();
+                }
+            }
+
+            function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email) {
+                const startHHMM = minutesToHHMM(WORK_START * 60 + startIdx * SLOT_MIN);
+                const endHHMM = minutesToHHMM(WORK_START * 60 + endIdx * SLOT_MIN);
+                const id = state.nextApptId++;
+                state.appts[id] = { dateKey, startIdx, endIdx, status: 'TEMP' };
+                const subj = `Your appointment is temporarily reserved – please confirm`;
+                const body = `<p>Thanks for your request.</p>
+        <p><strong>Date:</strong> ${dateKey}<br/>
+        <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
+        <p>This booking is <em>temporary</em>. Please Approve or Reject below.</p>`;
+                pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
+                renderDay();
+                renderMonth();
+                saveState();
+                return id;
+            }
+
+            // --- Client Booking Page ---
+            function populateServiceSelect() {
+                const sel = document.getElementById('c_service');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">Select a service…</option>';
+                SERVICES.forEach((s) => {
+                    const o = document.createElement('option');
+                    o.value = s.id;
+                    o.textContent = s.name;
+                    sel.appendChild(o);
+                });
+            }
+
+            function renderQuestions() {
+                const wrap = document.getElementById('c_questions');
+                if (!wrap) return;
+                wrap.innerHTML = '';
+                const service = SERVICES.find((s) => s.id === state.clientSelection.serviceId);
+                if (!service) {
+                    updateClientUI();
+                    return;
+                }
+                service.questions.forEach((q) => {
+                    const f = document.createElement('div');
+                    f.className = 'field';
+                    const lab = document.createElement('label');
+                    lab.textContent = q.label;
+                    f.appendChild(lab);
+                    let input;
+                    if (q.type === 'select') {
+                        input = document.createElement('select');
+                        q.options.forEach((opt) => {
+                            const o = document.createElement('option');
+                            o.value = opt;
+                            o.textContent = opt;
+                            input.appendChild(o);
+                        });
+                    } else if (q.type === 'boolean') {
+                        input = document.createElement('select');
+                        ['No', 'Yes'].forEach((v) => {
+                            const o = document.createElement('option');
+                            o.value = v === 'Yes';
+                            o.textContent = v;
+                            input.appendChild(o);
+                        });
+                    } else if (q.type === 'number') {
+                        input = document.createElement('input');
+                        input.type = 'number';
+                        input.min = '0';
+                        input.step = '1';
+                        input.placeholder = '0';
+                    } else {
+                        input = document.createElement('input');
+                    }
+                    input.dataset.key = q.key;
+                    input.onchange = () => {
+                        updateEstimate();
+                        updateClientUI();
+                    };
+                    input.oninput = () => {
+                        updateEstimate();
+                        updateClientUI();
+                    };
+                    f.appendChild(input);
+                    wrap.appendChild(f);
+                });
+                updateEstimate();
+                updateClientUI();
+            }
+
+            function collectAnswers() {
+                const wrap = document.getElementById('c_questions');
+                if (!wrap) return {};
+                const ans = {};
+                wrap.querySelectorAll('[data-key]').forEach((el) => {
+                    const key = el.dataset.key;
+                    if (el.type === 'number') ans[key] = Number(el.value || 0);
+                    else if (
+                        el.tagName === 'SELECT' &&
+                        (el.options[0]?.text === 'No' || el.options[0]?.text === 'Yes')
+                    )
+                        ans[key] = el.value === 'true' || el.value === true;
+                    else if (el.tagName === 'SELECT') ans[key] = el.value;
+                    else ans[key] = el.value;
+                });
+                return ans;
+            }
+
+            function updateEstimate() {
+                const el = document.getElementById('c_estimate');
+                const service = SERVICES.find((s) => s.id === state.clientSelection.serviceId);
+                if (!service) {
+                    el.textContent = 'Select a service…';
+                    return;
+                }
+                const ans = collectAnswers();
+                const price = service.price(ans);
+                if (price == null) {
+                    el.textContent = 'Quotation will be provided';
+                } else {
+                    el.textContent = `~ €${price.toFixed(2)}`;
+                }
+            }
+
+            function getFreeWindows(dateKey, durationSlots) {
+                ensureDay(dateKey);
+                const slots = state.schedule[dateKey];
+                const windows = [];
+                for (let i = 0; i <= slots.length - durationSlots; i++) {
+                    let ok = true;
+                    for (let j = 0; j < durationSlots; j++) {
+                        if (slots[i + j] !== 'FREE') {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    if (ok) {
+                        const startHHMM = minutesToHHMM(WORK_START * 60 + i * SLOT_MIN);
+                        const endHHMM = minutesToHHMM(
+                            WORK_START * 60 + (i + durationSlots) * SLOT_MIN
+                        );
+                        windows.push({
+                            startIdx: i,
+                            endIdx: i + durationSlots,
+                            startHHMM,
+                            endHHMM
+                        });
+                    }
+                }
+                return windows;
+            }
+
+            function clientFormErrors() {
+                const errs = [];
+                const name = document.getElementById('c_name').value.trim();
+                if (!name) errs.push('Enter your name.');
+                const email = document.getElementById('c_email').value.trim();
+                if (!emailValid(email)) errs.push('Enter a valid email.');
+                const serviceId = document.getElementById('c_service').value;
+                if (!serviceId) errs.push('Select a service.');
+                const qs = document.querySelectorAll('#c_questions [data-key]');
+                qs.forEach((el) => {
+                    if (el.type === 'number') {
+                        if (el.value === '') errs.push(`Fill ${el.dataset.key}.`);
+                    } else if (el.tagName === 'SELECT' || el.tagName === 'INPUT') {
+                        if (el.value === '') errs.push(`Fill ${el.dataset.key}.`);
+                    }
+                });
+                return errs;
+            }
+
+            function updateClientUI() {
+                const right = document.getElementById('client-right');
+                if (!right) return;
+                const errs = clientFormErrors();
+                if (errs.length) {
+                    right.classList.add('hidden');
+                    showClientError(errs.join(' '));
+                } else {
+                    right.classList.remove('hidden');
+                    clearClientError();
+                    renderClientTimes();
+                }
+            }
+
+            function renderClientTimes() {
+                const grid = document.getElementById('c_times');
+                if (!grid) return;
+                grid.innerHTML = '';
+                const dateKey = document.getElementById('c_date').value;
+                const service = SERVICES.find((s) => s.id === state.clientSelection.serviceId);
+                if (!service || !dateKey) return;
+                const wins = getFreeWindows(dateKey, service.durationSlots);
+                if (wins.length === 0) {
+                    grid.innerHTML = '<div class="note">No free slots on this day.</div>';
+                    return;
+                }
+                wins.forEach((w, idx) => {
+                    const b = document.createElement('button');
+                    b.className = 'timebtn';
+                    b.textContent = `${w.startHHMM}–${w.endHHMM}`;
+                    b.onclick = () => {
+                        state.clientSelection.dateKey = dateKey;
+                        state.clientSelection.startIdx = w.startIdx;
+                        state.clientSelection.endIdx = w.endIdx;
+                        state.clientSelection.startHHMM = w.startHHMM;
+                        state.clientSelection.endHHMM = w.endHHMM;
+                        document.getElementById(
+                            'c_selected'
+                        ).textContent = `${w.startHHMM}–${w.endHHMM} on ${dateKey}`;
+                        grid.querySelectorAll('.timebtn').forEach((x) =>
+                            x.classList.remove('selected')
+                        );
+                        b.classList.add('selected');
+                        clearClientError();
+                    };
+                    grid.appendChild(b);
+                });
+            }
+
+            function sendClientRequest() {
+                clearClientError();
+                const errs = clientFormErrors();
+                if (errs.length) {
+                    showClientError(errs.join(' '));
+                    return;
+                }
+
+                const name = document.getElementById('c_name').value.trim();
+                const email = document.getElementById('c_email').value.trim();
+                const service = SERVICES.find((s) => s.id === state.clientSelection.serviceId);
+                const sel = state.clientSelection;
+                if (!service || !sel.dateKey || sel.startIdx == null) {
+                    showClientError('Please choose a date and time.');
+                    return;
+                }
+
+                // Validate selected window still FREE
+                ensureDay(sel.dateKey);
+                const slots = state.schedule[sel.dateKey];
+                let ok = true;
+                for (let i = sel.startIdx; i < sel.endIdx; i++) {
+                    if (slots[i] !== 'FREE') {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (!ok) {
+                    showClientError(
+                        'Selected time is no longer available (TEMP/BOOKED). Please pick another slot.'
+                    );
+                    return;
+                }
+
+                // Hold the slot as TEMP until admin responds
+                for (let i = sel.startIdx; i < sel.endIdx; i++) slots[i] = 'TEMP';
+
+                const ans = collectAnswers();
+                const estimate = service.price(ans);
+
+                const req = {
+                    id: state.nextRequestId++,
+                    createdAt: Date.now(),
+                    customer: { name, email },
+                    serviceId: service.id,
+                    serviceName: service.name,
+                    answers: ans,
+                    estimate: estimate,
+                    preferred: {
+                        dateKey: sel.dateKey,
+                        startIdx: sel.startIdx,
+                        endIdx: sel.endIdx,
+                        startHHMM: sel.startHHMM,
+                        endHHMM: sel.endHHMM
+                    },
+                    hold: { dateKey: sel.dateKey, startIdx: sel.startIdx, endIdx: sel.endIdx },
+                    status: 'NEW'
+                };
+                state.requests.unshift(req);
+                saveState();
+                renderRequests();
+                renderMonth();
+                renderDay();
+                document.getElementById('c_result').textContent =
+                    'Request sent! The time is held temporarily while we review.';
+
+                // Acknowledgement email in simulator
+                pushEmail({
+                    subj: 'We received your request',
+                    body: `<p>Thanks ${name}! We will review your request for <strong>${service.name}</strong> and propose a time.</p>`,
+                    apptId: null,
+                    to: email
+                });
+            }
+
+            // --- UI actions ---
+            function onHoldClick() {
+                const dateKey = document.getElementById('datePicker').value;
+                const start = document.getElementById('startTime').value;
+                const end = document.getElementById('endTime').value;
+                const email = document.getElementById('clientEmail').value;
+                ensureDay(dateKey);
+                createTempAppointment(dateKey, start, end, email);
+            }
+
+            function onResetDay() {
+                const key = document.getElementById('datePicker').value;
+                const slots = state.schedule[key];
+                if (!slots) return;
+                for (let i = 0; i < slots.length; i++) slots[i] = 'FREE';
+                renderDay();
+                renderMonth();
+                saveState();
+            }
+
+            function clearAllData() {
+                if (confirm('Clear all demo data and reset?')) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    location.reload();
+                }
+            }
+
+            function switchPage(p) {
+                state.currentPage = p;
+                saveState();
+                document.getElementById('nav-admin').classList.toggle('active', p === 'admin');
+                document.getElementById('nav-client').classList.toggle('active', p === 'client');
+                document.getElementById('page-admin').style.display =
+                    p === 'admin' ? 'block' : 'none';
+                document.getElementById('page-client').style.display =
+                    p === 'client' ? 'block' : 'none';
+            }
+
+            // --- Tiny Test Suite (console) ---
+            function runTests() {
+                console.groupCollapsed('Demo Tests');
+                // 1) ensureDay creates correct number of slots
+                const testKey = '2099-12-31';
+                ensureDay(testKey);
+                const expectedSlots = ((WORK_END - WORK_START) * 60) / SLOT_MIN;
+                console.assert(
+                    state.schedule[testKey].length === expectedSlots,
+                    'ensureDay slot count'
+                );
+
+                // 2) getFreeWindows excludes BOOKED/TEMP
+                const slots = state.schedule[testKey];
+                for (let i = 0; i < slots.length; i++) slots[i] = 'FREE';
+                slots[2] = 'BOOKED';
+                slots[3] = 'TEMP';
+                const wins = getFreeWindows(testKey, 2);
+                const overlap = wins.some(
+                    (w) => (w.startIdx <= 2 && w.endIdx > 2) || (w.startIdx <= 3 && w.endIdx > 3)
+                );
+                console.assert(
+                    !overlap,
+                    'getFreeWindows should not include windows overlapping BOOKED/TEMP'
+                );
+
+                // 3) price calculator for S1
+                const p = SERVICES[0].price({
+                    location: 'Toilet',
+                    severity: 'Fully blocked',
+                    afterHours: true
+                });
+                console.assert(p === 95 + 20 + 40 + 60, 'price formula S1');
+
+                // 4) releaseHold frees TEMP
+                const req = { hold: { dateKey: testKey, startIdx: 5, endIdx: 7 } };
+                for (let i = 5; i < 7; i++) slots[i] = 'TEMP';
+                releaseHold(req);
+                console.assert(
+                    slots[5] === 'FREE' && slots[6] === 'FREE' && !req.hold,
+                    'releaseHold frees and clears hold'
+                );
+
+                console.log('All tests executed. Check assertions above.');
+                console.groupEnd();
+            }
+
+            // --- Bootstrap ---
+            function init() {
+                const had = loadState();
+                // Seed a couple of slots if first run
+                if (!had) {
+                    const todayKey = formatDateKey(state.selectedDate);
+                    ensureDay(todayKey);
+                    const startIdx = (10 * 60 - WORK_START * 60) / SLOT_MIN; // 10:00-11:00 booked
+                    for (let i = startIdx; i < startIdx + 2; i++)
+                        state.schedule[todayKey][i] = 'BOOKED';
+                    const t2 = (15 * 60 - WORK_START * 60) / SLOT_MIN;
+                    state.schedule[todayKey][t2] = 'TEMP';
+                    saveState();
+                }
+
+                // Admin widgets
+                buildTimeOptions();
+                syncDatePicker();
+                renderMonth();
+                renderDay();
+                renderMail();
+                renderRequests();
+
+                // Client widgets
+                populateServiceSelect();
+                const cdate = document.getElementById('c_date');
+                if (cdate) {
+                    cdate.value = formatDateKey(new Date());
+                }
+                renderClientTimes();
+                updateClientUI();
+
+                // Events
+                const dp = document.getElementById('datePicker');
+                if (dp) {
+                    dp.addEventListener('change', (e) => {
+                        state.selectedDate = parseDateKey(e.target.value);
+                        renderMonth();
+                        renderDay();
+                        saveState();
+                    });
+                }
+                const btnHold = document.getElementById('btnHold');
+                if (btnHold) btnHold.onclick = onHoldClick;
+                const btnReset = document.getElementById('btnResetDay');
+                if (btnReset) btnReset.onclick = onResetDay;
+
+                document.getElementById('nav-admin').onclick = () => switchPage('admin');
+                document.getElementById('nav-client').onclick = () => switchPage('client');
+                const btnClear = document.getElementById('btnClear');
+                if (btnClear) btnClear.onclick = clearAllData;
+
+                const sSel = document.getElementById('c_service');
+                if (sSel) {
+                    sSel.onchange = (e) => {
+                        state.clientSelection.serviceId = e.target.value || null;
+                        renderQuestions();
+                        renderClientTimes();
+                        saveState();
+                    };
+                }
+                const cdate2 = document.getElementById('c_date');
+                if (cdate2) {
+                    cdate2.onchange = () => {
+                        renderClientTimes();
+                    };
+                }
+                document.getElementById('c_name').addEventListener('input', updateClientUI);
+                document.getElementById('c_email').addEventListener('input', updateClientUI);
+                const sendBtn = document.getElementById('c_send');
+                if (sendBtn) {
+                    sendBtn.onclick = sendClientRequest;
+                }
+
+                // Restore page
+                switchPage(state.currentPage || 'admin');
+
+                // Run tests (console)
+                runTests();
+            }
+
+            init();
+        </script>
+    </body>
+</html>
