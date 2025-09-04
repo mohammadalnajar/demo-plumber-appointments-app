@@ -221,9 +221,6 @@
             }
 
             .slots {
-                display: grid;
-                grid-template-columns: 100px 1fr;
-                gap: 6px;
                 max-height: 520px;
                 overflow: auto;
                 border-top: 1px dashed var(--border);
@@ -414,6 +411,69 @@
             }
             .hidden {
                 display: none !important;
+            }
+
+            /* Popup Modal */
+            .popup-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            .popup {
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 20px;
+                max-width: 500px;
+                width: 90%;
+                box-shadow: var(--shadow);
+                position: relative;
+            }
+            .popup h3 {
+                margin: 0 0 16px 0;
+                color: var(--text);
+            }
+            .popup-close {
+                position: absolute;
+                top: 12px;
+                right: 16px;
+                background: none;
+                border: none;
+                color: var(--sub);
+                font-size: 20px;
+                cursor: pointer;
+                padding: 4px;
+            }
+            .popup-close:hover {
+                color: var(--text);
+            }
+            .popup-info {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .popup-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 4px 0;
+                border-bottom: 1px solid var(--border);
+            }
+            .popup-row:last-child {
+                border-bottom: none;
+            }
+            .popup-label {
+                color: var(--sub);
+                font-weight: 600;
+            }
+            .popup-value {
+                color: var(--text);
             }
         </style>
     </head>
@@ -848,16 +908,31 @@
                     const box = document.createElement('div');
                     box.className = 'slot ' + slots[i];
                     box.textContent = slots[i];
-                    box.title = 'Click to toggle FREE ↔ TEMP (demo)';
+
+                    // Set appropriate tooltip based on slot status
+                    if (slots[i] === 'FREE') {
+                        box.title = 'Click to make TEMP (demo)';
+                    } else if (slots[i] === 'TEMP') {
+                        box.title = 'Click to view appointment details';
+                    } else if (slots[i] === 'BOOKED') {
+                        box.title = 'Click to view booking details';
+                    }
+
+                    // Debug: Add visual indicator for first slot
+                    if (i === 0) {
+                        box.title = 'FIRST SLOT (08:00) - ' + box.title;
+                    }
+
                     box.onclick = () => {
                         if (slots[i] === 'FREE') {
                             slots[i] = 'TEMP';
-                        } else if (slots[i] === 'TEMP') {
-                            slots[i] = 'FREE';
+                            renderDay();
+                            renderMonth();
+                            saveState();
+                        } else if (slots[i] === 'TEMP' || slots[i] === 'BOOKED') {
+                            // Show popup with appointment/client details
+                            showAppointmentPopup(dateKey, i, slots[i]);
                         }
-                        renderDay();
-                        renderMonth();
-                        saveState();
                     };
                     row.append(label, box);
                     container.appendChild(row);
@@ -909,6 +984,158 @@
                 if (!box) return;
                 box.textContent = '';
                 box.classList.add('hidden');
+            }
+
+            // --- Popup for appointment details ---
+            function findAppointmentInfo(dateKey, slotIndex) {
+                // Find appointment that includes this slot
+                for (const apptId in state.appts) {
+                    const appt = state.appts[apptId];
+                    if (
+                        appt.dateKey === dateKey &&
+                        slotIndex >= appt.startIdx &&
+                        slotIndex < appt.endIdx
+                    ) {
+                        return { type: 'appointment', data: appt, apptId: apptId };
+                    }
+                }
+
+                // Find request with hold that includes this slot
+                for (const req of state.requests) {
+                    if (
+                        req.hold &&
+                        req.hold.dateKey === dateKey &&
+                        slotIndex >= req.hold.startIdx &&
+                        slotIndex < req.hold.endIdx
+                    ) {
+                        return { type: 'request', data: req };
+                    }
+                }
+
+                return null;
+            }
+
+            function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
+                const info = findAppointmentInfo(dateKey, slotIndex);
+
+                let title, content;
+                if (info?.type === 'appointment') {
+                    const appt = info.data;
+                    const startTime = minutesToHHMM(WORK_START * 60 + appt.startIdx * SLOT_MIN);
+                    const endTime = minutesToHHMM(WORK_START * 60 + appt.endIdx * SLOT_MIN);
+
+                    title = `Appointment #${info.apptId}`;
+                    content = `
+                        <div class="popup-row">
+                            <span class="popup-label">Status:</span>
+                            <span class="popup-value">${appt.status}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Date:</span>
+                            <span class="popup-value">${dateKey}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Time:</span>
+                            <span class="popup-value">${startTime} - ${endTime}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Duration:</span>
+                            <span class="popup-value">${
+                                (appt.endIdx - appt.startIdx) * SLOT_MIN
+                            } minutes</span>
+                        </div>
+                    `;
+                } else if (info?.type === 'request') {
+                    const req = info.data;
+                    const startTime = minutesToHHMM(WORK_START * 60 + req.hold.startIdx * SLOT_MIN);
+                    const endTime = minutesToHHMM(WORK_START * 60 + req.hold.endIdx * SLOT_MIN);
+
+                    title = `Client Request #${req.id}`;
+                    content = `
+                        <div class="popup-row">
+                            <span class="popup-label">Client:</span>
+                            <span class="popup-value">${req.customer.name}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Email:</span>
+                            <span class="popup-value">${req.customer.email}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Service:</span>
+                            <span class="popup-value">${req.serviceName}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Status:</span>
+                            <span class="popup-value">${req.status}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Date:</span>
+                            <span class="popup-value">${dateKey}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Time:</span>
+                            <span class="popup-value">${startTime} - ${endTime}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Estimate:</span>
+                            <span class="popup-value">${
+                                req.estimate != null ? '€' + req.estimate.toFixed(2) : 'Quotation'
+                            }</span>
+                        </div>
+                    `;
+                } else {
+                    title = `${slotStatus} Slot`;
+                    content = `
+                        <div class="popup-row">
+                            <span class="popup-label">Date:</span>
+                            <span class="popup-value">${dateKey}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Time:</span>
+                            <span class="popup-value">${minutesToHHMM(
+                                WORK_START * 60 + slotIndex * SLOT_MIN
+                            )}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Status:</span>
+                            <span class="popup-value">${slotStatus}</span>
+                        </div>
+                        <div class="popup-row">
+                            <span class="popup-label">Info:</span>
+                            <span class="popup-value">No appointment details found</span>
+                        </div>
+                    `;
+                }
+
+                const overlay = document.createElement('div');
+                overlay.className = 'popup-overlay';
+                overlay.innerHTML = `
+                    <div class="popup">
+                        <button class="popup-close">×</button>
+                        <h3>${title}</h3>
+                        <div class="popup-info">
+                            ${content}
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+
+                // Close popup handlers
+                const closeBtn = overlay.querySelector('.popup-close');
+                closeBtn.onclick = () => document.body.removeChild(overlay);
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) document.body.removeChild(overlay);
+                };
+
+                // Close on escape key
+                const escapeHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        document.body.removeChild(overlay);
+                        document.removeEventListener('keydown', escapeHandler);
+                    }
+                };
+                document.addEventListener('keydown', escapeHandler);
             }
 
             // --- Mail simulator ---
