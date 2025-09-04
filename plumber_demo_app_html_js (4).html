@@ -1161,7 +1161,44 @@
                         });
                     };
 
-                    actions.append(btnPropReq, btnReject);
+                    // Add Approve button for admin to confirm booking
+                    const btnApprove = document.createElement('button');
+                    btnApprove.className = 'btn approve';
+                    btnApprove.textContent = 'Approve';
+                    btnApprove.onclick = () => {
+                        // Book the spot for the client
+                        if (req.hold) {
+                            const { dateKey, startIdx, endIdx } = req.hold;
+                            ensureDay(dateKey);
+                            for (let i = startIdx; i < endIdx; i++) {
+                                state.schedule[dateKey][i] = 'BOOKED';
+                            }
+                            // Remove hold
+                            delete req.hold;
+                            req.status = 'CONFIRMED';
+                            saveState();
+                            renderRequests();
+                            renderMonth();
+                            renderDay();
+                            // Send confirmation email to client
+                            pushEmail({
+                                subj: 'Your appointment is confirmed',
+                                body: `<p>Dear ${
+                                    req.customer.name
+                                },</p><p>Your booking for <strong>${
+                                    req.serviceName
+                                }</strong> on <strong>${dateKey}</strong> at <strong>${minutesToHHMM(
+                                    WORK_START * 60 + startIdx * SLOT_MIN
+                                )}–${minutesToHHMM(
+                                    WORK_START * 60 + endIdx * SLOT_MIN
+                                )}</strong> is <span style='color:var(--green)'><strong>confirmed</strong></span>!</p>`,
+                                apptId: null,
+                                to: req.customer.email
+                            });
+                        }
+                    };
+
+                    actions.append(btnPropReq, btnApprove, btnReject);
                     card.appendChild(actions);
                     card.appendChild(customWrap);
 
