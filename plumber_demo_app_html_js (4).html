@@ -911,7 +911,7 @@
 
                     // Set appropriate tooltip based on slot status
                     if (slots[i] === 'FREE') {
-                        box.title = 'Click to make TEMP (demo)';
+                        box.title = 'Free. Use controls/client request to hold.';
                     } else if (slots[i] === 'TEMP') {
                         box.title = 'Click to view appointment details';
                     } else if (slots[i] === 'BOOKED') {
@@ -924,15 +924,11 @@
                     }
 
                     box.onclick = () => {
-                        if (slots[i] === 'FREE') {
-                            slots[i] = 'TEMP';
-                            renderDay();
-                            renderMonth();
-                            saveState();
-                        } else if (slots[i] === 'TEMP' || slots[i] === 'BOOKED') {
+                        if (slots[i] === 'TEMP' || slots[i] === 'BOOKED') {
                             // Show popup with appointment/client details
                             showAppointmentPopup(dateKey, i, slots[i]);
                         }
+                        // Clicking FREE does nothing to avoid creating detail-less holds
                     };
                     row.append(label, box);
                     container.appendChild(row);
@@ -1053,6 +1049,16 @@
                             <span class="popup-label">Status:</span>
                             <span class="popup-value">${appt.status}</span>
                         </div>
+                        ${
+                            appt.client
+                                ? `<div class=\"popup-row\"><span class=\"popup-label\">Client:</span><span class=\"popup-value\">${appt.client.name} (${appt.client.email})</span></div>`
+                                : ''
+                        }
+                        ${
+                            appt.serviceName
+                                ? `<div class=\"popup-row\"><span class=\"popup-label\">Service:</span><span class=\"popup-value\">${appt.serviceName}</span></div>`
+                                : ''
+                        }
                         <div class="popup-row">
                             <span class="popup-label">Date:</span>
                             <span class="popup-value">${dateKey}</span>
@@ -1416,13 +1422,23 @@
                     btnApprove.className = 'btn approve';
                     btnApprove.textContent = 'Approve';
                     btnApprove.onclick = () => {
-                        // Book the spot for the client
+                        // Book the spot for the client and create an appointment record
                         if (req.hold) {
                             const { dateKey, startIdx, endIdx } = req.hold;
                             ensureDay(dateKey);
                             for (let i = startIdx; i < endIdx; i++) {
                                 state.schedule[dateKey][i] = 'BOOKED';
                             }
+                            const newApptId = state.nextApptId++;
+                            state.appts[newApptId] = {
+                                dateKey,
+                                startIdx,
+                                endIdx,
+                                status: 'CONFIRMED',
+                                client: req.customer,
+                                serviceName: req.serviceName
+                            };
+                            req.apptId = newApptId;
                             // Remove hold
                             delete req.hold;
                             req.status = 'CONFIRMED';
@@ -1442,7 +1458,7 @@
                                 )}–${minutesToHHMM(
                                     WORK_START * 60 + endIdx * SLOT_MIN
                                 )}</strong> is <span style='color:var(--green)'><strong>confirmed</strong></span>!</p>`,
-                                apptId: null,
+                                apptId: newApptId,
                                 to: req.customer.email
                             });
                         }
@@ -1476,6 +1492,19 @@
                 const endHHMM = minutesToHHMM(WORK_START * 60 + endIdx * SLOT_MIN);
                 const id = state.nextApptId++;
                 state.appts[id] = { dateKey, startIdx, endIdx, status: 'TEMP' };
+                // Link to matching request if exists
+                const match = state.requests.find(
+                    (r) =>
+                        r.hold &&
+                        r.hold.dateKey === dateKey &&
+                        r.hold.startIdx === startIdx &&
+                        r.hold.endIdx === endIdx
+                );
+                if (match) {
+                    state.appts[id].client = match.customer;
+                    state.appts[id].serviceName = match.serviceName;
+                    match.apptId = id;
+                }
                 const subj = `Your appointment is temporarily reserved – please confirm`;
                 const body = `<p>Thanks for your request.</p>
         <p><strong>Date:</strong> ${dateKey}<br/>
@@ -1855,11 +1884,44 @@
                 if (!had) {
                     const todayKey = formatDateKey(state.selectedDate);
                     ensureDay(todayKey);
-                    const startIdx = (10 * 60 - WORK_START * 60) / SLOT_MIN; // 10:00-11:00 booked
-                    for (let i = startIdx; i < startIdx + 2; i++)
+                    // Seed BOOKED 10:00–11:00 and create an appointment record
+                    const bookedStart = (10 * 60 - WORK_START * 60) / SLOT_MIN;
+                    const bookedEnd = bookedStart + 2;
+                    for (let i = bookedStart; i < bookedEnd; i++)
                         state.schedule[todayKey][i] = 'BOOKED';
-                    const t2 = (15 * 60 - WORK_START * 60) / SLOT_MIN;
-                    state.schedule[todayKey][t2] = 'TEMP';
+                    const seedApptId = state.nextApptId++;
+                    state.appts[seedApptId] = {
+                        dateKey: todayKey,
+                        startIdx: bookedStart,
+                        endIdx: bookedEnd,
+                        status: 'CONFIRMED',
+                        client: { name: 'Seeded Client', email: 'seed@example.com' },
+                        serviceName: 'Demo Job'
+                    };
+
+                    // Seed a TEMP hold 15:00–15:30 with a matching request
+                    const tempStart = (15 * 60 - WORK_START * 60) / SLOT_MIN;
+                    const tempEnd = tempStart + 1;
+                    for (let i = tempStart; i < tempEnd; i++) state.schedule[todayKey][i] = 'TEMP';
+                    const seedReq = {
+                        id: state.nextRequestId++,
+                        createdAt: Date.now(),
+                        customer: { name: 'Demo Client', email: 'demo@example.com' },
+                        serviceId: 'S1',
+                        serviceName: 'Blockage / Verstopping',
+                        answers: {},
+                        estimate: 95,
+                        preferred: {
+                            dateKey: todayKey,
+                            startIdx: tempStart,
+                            endIdx: tempEnd,
+                            startHHMM: minutesToHHMM(WORK_START * 60 + tempStart * SLOT_MIN),
+                            endHHMM: minutesToHHMM(WORK_START * 60 + tempEnd * SLOT_MIN)
+                        },
+                        hold: { dateKey: todayKey, startIdx: tempStart, endIdx: tempEnd },
+                        status: 'NEW'
+                    };
+                    state.requests.unshift(seedReq);
                     saveState();
                 }
 
