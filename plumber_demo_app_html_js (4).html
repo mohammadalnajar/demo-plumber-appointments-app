@@ -984,35 +984,27 @@
 
             // --- Popup for appointment details ---
             function findAppointmentInfo(dateKey, slotIndex) {
-                console.log('Debug: Looking for appointment info:', { dateKey, slotIndex });
-                console.log('Debug: Available appointments:', state.appts);
-                console.log('Debug: Available requests:', state.requests);
-
                 // Find appointment that includes this slot
                 for (const apptId in state.appts) {
                     const appt = state.appts[apptId];
-                    console.log('Debug: Checking appointment:', apptId, appt);
+
                     if (
                         appt.dateKey === dateKey &&
                         slotIndex >= appt.startIdx &&
                         slotIndex < appt.endIdx
                     ) {
-                        console.log('Debug: Found appointment match!');
                         return { type: 'appointment', data: appt, apptId: apptId };
                     }
                 }
 
                 // Find request with hold that includes this slot
                 for (const req of state.requests) {
-                    console.log('Debug: Checking request:', req);
-                    console.log('Debug: Request hold:', req.hold);
                     if (
                         req.hold &&
                         req.hold.dateKey === dateKey &&
                         slotIndex >= req.hold.startIdx &&
                         slotIndex < req.hold.endIdx
                     ) {
-                        console.log('Debug: Found request match!');
                         return { type: 'request', data: req };
                     } else if (req.hold) {
                         console.log("Debug: Request hold exists but doesn't match:", {
@@ -1242,7 +1234,12 @@
                 }
                 for (let i = startIdx; i < endIdx; i++) slots[i] = 'TEMP';
                 const id = state.nextApptId++;
-                state.appts[id] = { dateKey, startIdx, endIdx, status: 'TEMP' };
+                const appt = { dateKey, startIdx, endIdx, status: 'TEMP' };
+                if (email && email.includes('@')) {
+                    const nameGuess = email.split('@')[0];
+                    appt.client = { name: nameGuess, email };
+                }
+                state.appts[id] = appt;
                 renderDay();
                 renderMonth();
                 saveState();
