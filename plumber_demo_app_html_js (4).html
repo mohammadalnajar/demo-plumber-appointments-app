@@ -988,30 +988,53 @@
 
             // --- Popup for appointment details ---
             function findAppointmentInfo(dateKey, slotIndex) {
+                console.log('Debug: Looking for appointment info:', { dateKey, slotIndex });
+                console.log('Debug: Available appointments:', state.appts);
+                console.log('Debug: Available requests:', state.requests);
+
                 // Find appointment that includes this slot
                 for (const apptId in state.appts) {
                     const appt = state.appts[apptId];
+                    console.log('Debug: Checking appointment:', apptId, appt);
                     if (
                         appt.dateKey === dateKey &&
                         slotIndex >= appt.startIdx &&
                         slotIndex < appt.endIdx
                     ) {
+                        console.log('Debug: Found appointment match!');
                         return { type: 'appointment', data: appt, apptId: apptId };
                     }
                 }
 
                 // Find request with hold that includes this slot
                 for (const req of state.requests) {
+                    console.log('Debug: Checking request:', req);
+                    console.log('Debug: Request hold:', req.hold);
                     if (
                         req.hold &&
                         req.hold.dateKey === dateKey &&
                         slotIndex >= req.hold.startIdx &&
                         slotIndex < req.hold.endIdx
                     ) {
+                        console.log('Debug: Found request match!');
                         return { type: 'request', data: req };
+                    } else if (req.hold) {
+                        console.log("Debug: Request hold exists but doesn't match:", {
+                            holdDateKey: req.hold.dateKey,
+                            searchDateKey: dateKey,
+                            holdStartIdx: req.hold.startIdx,
+                            holdEndIdx: req.hold.endIdx,
+                            searchSlotIndex: slotIndex,
+                            dateMatch: req.hold.dateKey === dateKey,
+                            slotInRange:
+                                slotIndex >= req.hold.startIdx && slotIndex < req.hold.endIdx
+                        });
+                    } else {
+                        console.log('Debug: Request has no hold property');
                     }
                 }
 
+                console.log('Debug: No appointment info found');
                 return null;
             }
 
