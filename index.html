@@ -118,11 +118,21 @@
                                                 placeholder="client@example.com"
                                             />
                                         </label>
-                                        <button id="btnHold">Send temp appointment email</button>
-                                        <button id="btnBookFinal">Book final appointment</button>
-                                        <button id="btnResetDay" title="Clear day to all free">
-                                            Reset day
-                                        </button>
+                                        <div class="controls-actions">
+                                            <button id="btnHold" class="primary">
+                                                Send temp appointment email
+                                            </button>
+                                            <button id="btnBookFinal" class="primary">
+                                                Book final appointment
+                                            </button>
+                                            <button
+                                                id="btnResetDay"
+                                                class="secondary"
+                                                title="Clear day to all free"
+                                            >
+                                                Reset day
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div id="slots" class="slots" aria-live="polite"></div>

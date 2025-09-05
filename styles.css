@@ -396,7 +396,7 @@ body {
     transition: all 0.18s ease;
     padding: 10px 14px;
     font-size: 13px;
-    min-height: 40px;
+    /* min-height: 40px; */
 }
 .controls button:hover {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -413,6 +413,30 @@ body {
     padding: 9px 12px;
     font-size: 13px;
     min-height: 36px;
+}
+
+/* Controls actions wrapper - lays out the three admin buttons */
+.controls-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+}
+.controls-actions .primary {
+    flex: 1 1 auto; /* primary buttons expand */
+}
+.controls-actions .secondary {
+    flex: 0 0 auto; /* reset stays compact */
+}
+@media (max-width: 700px) {
+    .controls-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .controls-actions .primary {
+        width: 100%;
+    }
 }
 .controls button#btnResetDay:hover {
     background: linear-gradient(135deg, #6b7280, #4b5563);
