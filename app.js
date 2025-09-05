@@ -2,7 +2,8 @@
 const WORK_START = 8; // 08:00
 const WORK_END = 18; // 18:00
 const SLOT_MIN = 30; // 30-min slots
-const STORAGE_KEY = 'plumberDemoState_v4';
+const TEMP_HOLD_DURATION = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+const STORAGE_KEY = 'plumberDemoState_v5'; // Updated version for timer feature
 
 // Demo companies
 const COMPANIES = [
@@ -78,6 +79,73 @@ function hhmmToMinutes(hhmm) {
     return h * 60 + m;
 }
 
+// Timer utility functions
+function formatTimeRemaining(milliseconds) {
+    if (milliseconds <= 0) return 'Expired';
+
+    const hours = Math.floor(milliseconds / (60 * 60 * 1000));
+    const minutes = Math.floor((milliseconds % (60 * 60 * 1000)) / (60 * 1000));
+    const seconds = Math.floor((milliseconds % (60 * 1000)) / 1000);
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m left`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s left`;
+    } else {
+        return `${seconds}s left`;
+    }
+}
+
+function isAppointmentExpired(appt) {
+    return appt.status === 'TEMP' && appt.expiresAt && Date.now() > appt.expiresAt;
+}
+
+function getTimeRemainingForAppointment(appt) {
+    if (appt.status !== 'TEMP' || !appt.expiresAt) return null;
+    return Math.max(0, appt.expiresAt - Date.now());
+}
+
+// Clean up expired temporary appointments
+function cleanupExpiredAppointments() {
+    let hasExpired = false;
+
+    for (const apptId in state.appts) {
+        const appt = state.appts[apptId];
+        if (isAppointmentExpired(appt)) {
+            // Free up the slots
+            const slots = state.schedule[appt.companyId][appt.dateKey];
+            for (let i = appt.startIdx; i < appt.endIdx; i++) {
+                if (slots[i] === 'TEMP') {
+                    slots[i] = 'FREE';
+                }
+            }
+
+            // Mark appointment as expired
+            appt.status = 'EXPIRED';
+            hasExpired = true;
+
+            // Send expiry notification email
+            const subj = `Your temporary reservation has expired`;
+            const body = `<p>Unfortunately, your temporary appointment reservation has expired.</p>
+<p><strong>Company:</strong> ${appt.companyName}<br/>
+<strong>Date:</strong> ${appt.dateKey}<br/>
+<strong>Time:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
+                appt.endIdx * SLOT_MIN + WORK_START * 60
+            )}</p>
+<p>The time slots are now available for other bookings. Please make a new request if you'd like to reschedule.</p>`;
+            pushEmail({ subj, body, apptId: null, to: appt.email || 'client@example.com' });
+        }
+    }
+
+    if (hasExpired) {
+        renderDay();
+        renderMonth();
+        renderSidebarMonth();
+        refreshMultiCalendarIfActive();
+        saveState();
+    }
+}
+
 // --- State ---
 const state = {
     monthCursor: new Date(),
@@ -85,13 +153,14 @@ const state = {
     selectedCompanyId: 'C1', // Default to first company
     schedule: {}, // companyId -> dateKey -> ['FREE'|'TEMP'|'BOOKED']
     emails: [], // {id, subj, body, apptId, status, to}
-    appts: {}, // apptId -> {companyId,dateKey,startIdx,endIdx,status}
+    appts: {}, // apptId -> {companyId,dateKey,startIdx,endIdx,status,expiresAt}
     requests: [], // array of request objects (client → admin)
     nextApptId: 1,
     nextEmailId: 1,
     nextRequestId: 1,
     currentPage: 'admin',
-    clientSelection: { serviceId: null, dateKey: null, startIdx: null, endIdx: null }
+    clientSelection: { serviceId: null, dateKey: null, startIdx: null, endIdx: null },
+    timerInterval: null // For periodic cleanup of expired appointments
 };
 
 // --- Persistence ---
@@ -308,18 +377,27 @@ function renderDay() {
             let customerName = 'Unknown';
             let email = '';
             let shouldShowActions = false;
+            let timerInfo = '';
 
             if (apptInfo && apptInfo.type === 'appointment') {
                 customerName = apptInfo.data.customerName || 'Unknown';
                 email = apptInfo.data.email || '';
                 shouldShowActions = true;
+
+                // Add timer for TEMP appointments
+                if (slots[i] === 'TEMP' && apptInfo.data.expiresAt) {
+                    const remaining = getTimeRemainingForAppointment(apptInfo.data);
+                    if (remaining !== null) {
+                        timerInfo = ` (⏰ ${formatTimeRemaining(remaining)})`;
+                    }
+                }
             } else if (apptInfo && apptInfo.type === 'request') {
                 customerName = apptInfo.data.customer.name || 'Unknown';
                 email = apptInfo.data.customer.email || '';
                 shouldShowActions = true;
             }
 
-            displayText = `${slots[i]} - ${customerName}`;
+            displayText = `${slots[i]} - ${customerName}${timerInfo}`;
 
             if (shouldShowActions) {
                 // Add action buttons for booked/temp slots
@@ -471,11 +549,30 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         const email = appt.email || (appt.client ? appt.client.email : 'No email');
 
         title = `Appointment #${info.apptId}`;
+
+        // Add timer info for TEMP appointments
+        let timerDisplay = '';
+        if (appt.status === 'TEMP' && appt.expiresAt) {
+            const remaining = getTimeRemainingForAppointment(appt);
+            if (remaining !== null) {
+                const isExpired = remaining <= 0;
+                timerDisplay = `
+      <div class="popup-row">
+        <span class="popup-label">Timer:</span>
+        <span class="popup-value" style="color: ${
+            isExpired ? 'var(--red)' : 'var(--yellow)'
+        }; font-weight: 600;">
+          ⏰ ${formatTimeRemaining(remaining)}
+        </span>
+      </div>`;
+            }
+        }
+
         content = `
       <div class="popup-row">
         <span class="popup-label">Status:</span>
         <span class="popup-value">${appt.status}</span>
-      </div>
+      </div>${timerDisplay}
       <div class="popup-row">
         <span class="popup-label">Company:</span>
         <span class="popup-value">${appt.companyName || 'Unknown Company'}</span>
@@ -683,6 +780,19 @@ function renderMail() {
 
         const appt = state.appts[m.apptId];
         if (appt && appt.status === 'TEMP') {
+            // Add timer info for temp appointments
+            let timerInfo = '';
+            if (appt.expiresAt) {
+                const remaining = getTimeRemainingForAppointment(appt);
+                if (remaining !== null) {
+                    timerInfo = document.createElement('div');
+                    timerInfo.className = 'meta';
+                    timerInfo.style.color = remaining > 0 ? 'var(--yellow)' : 'var(--red)';
+                    timerInfo.innerHTML = `⏰ <strong>${formatTimeRemaining(remaining)}</strong>`;
+                    card.appendChild(timerInfo);
+                }
+            }
+
             const actions = document.createElement('div');
             actions.className = 'actions';
             const ok = document.createElement('button');
@@ -719,6 +829,7 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName,
     for (let i = startIdx; i < endIdx; i++) slots[i] = 'TEMP';
     const id = state.nextApptId++;
     const company = COMPANIES.find((c) => c.id === cId);
+    const expiresAt = Date.now() + TEMP_HOLD_DURATION;
     const appt = {
         companyId: cId,
         companyName: company ? company.name : 'Unknown Company',
@@ -727,7 +838,9 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName,
         endIdx,
         status: 'TEMP',
         email: email || 'client@example.com',
-        customerName: customerName || 'Unknown Client'
+        customerName: customerName || 'Unknown Client',
+        expiresAt: expiresAt,
+        createdAt: Date.now()
     };
     if (email && email.includes('@')) appt.email = email;
     state.appts[id] = appt;
@@ -737,12 +850,18 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName,
     refreshMultiCalendarIfActive();
     saveState();
 
-    const subj = `Your appointment is temporarily reserved – please confirm`;
+    const timeRemaining = formatTimeRemaining(TEMP_HOLD_DURATION);
+    const subj = `Your appointment is temporarily reserved – please confirm within ${Math.floor(
+        TEMP_HOLD_DURATION / (60 * 60 * 1000)
+    )} hours`;
     const body = `<p>Thanks for your request.</p>
 <p><strong>Company:</strong> ${appt.companyName}<br/>
 <strong>Date:</strong> ${dateKey}<br/>
 <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
-<p>This booking is <em>temporary</em>. Please Approve or Reject below.</p>`;
+<p>This booking is <em>temporary</em> and will expire in <strong>${timeRemaining}</strong>. Please Approve or Reject below.</p>
+<p><em>⏰ You have ${Math.floor(
+        TEMP_HOLD_DURATION / (60 * 60 * 1000)
+    )} hours to respond before this reservation expires.</em></p>`;
     pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
     return id;
 }
@@ -797,9 +916,65 @@ function createFinalAppointment(
 function confirmAppointment(apptId) {
     const appt = state.appts[apptId];
     if (!appt) return;
-    const slots = state.schedule[appt.companyId][appt.dateKey];
-    for (let i = appt.startIdx; i < appt.endIdx; i++) slots[i] = 'BOOKED';
-    appt.status = 'CONFIRMED';
+
+    // Check if appointment has expired
+    if (isAppointmentExpired(appt)) {
+        // Check if slots are still available
+        const slots = state.schedule[appt.companyId][appt.dateKey];
+        let slotsAvailable = true;
+        for (let i = appt.startIdx; i < appt.endIdx; i++) {
+            if (slots[i] === 'BOOKED') {
+                slotsAvailable = false;
+                break;
+            }
+        }
+
+        if (slotsAvailable) {
+            // Slots are still free, allow late confirmation
+            for (let i = appt.startIdx; i < appt.endIdx; i++) {
+                slots[i] = 'BOOKED';
+            }
+            appt.status = 'CONFIRMED';
+            appt.expiresAt = null; // Clear expiration
+
+            // Send late confirmation email
+            const subj = `Your appointment is confirmed (late response accepted)`;
+            const body = `<p>Thank you for your response!</p>
+<p>Although your temporary reservation had expired, the time slots were still available and your appointment has been <strong>confirmed</strong>.</p>
+<p><strong>Company:</strong> ${appt.companyName}<br/>
+<strong>Date:</strong> ${appt.dateKey}<br/>
+<strong>Time:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
+                appt.endIdx * SLOT_MIN + WORK_START * 60
+            )}</p>
+<p>We look forward to seeing you.</p>`;
+            pushEmail({ subj, body, apptId: null, to: appt.email });
+        } else {
+            // Slots are no longer available
+            appt.status = 'EXPIRED_UNAVAILABLE';
+
+            // Send unavailable email
+            const subj = `Unable to confirm expired reservation`;
+            const body = `<p>Unfortunately, we cannot confirm your appointment request.</p>
+<p>Your temporary reservation expired and the requested time slots have been booked by other customers.</p>
+<p><strong>Originally requested:</strong><br/>
+<strong>Company:</strong> ${appt.companyName}<br/>
+<strong>Date:</strong> ${appt.dateKey}<br/>
+<strong>Time:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
+                appt.endIdx * SLOT_MIN + WORK_START * 60
+            )}</p>
+<p>Please make a new booking request to see available alternatives.</p>`;
+            pushEmail({ subj, body, apptId: null, to: appt.email });
+        }
+    } else {
+        // Normal confirmation (not expired)
+        const slots = state.schedule[appt.companyId][appt.dateKey];
+        for (let i = appt.startIdx; i < appt.endIdx; i++) {
+            slots[i] = 'BOOKED';
+        }
+        appt.status = 'CONFIRMED';
+        appt.expiresAt = null; // Clear expiration
+    }
+
     renderDay();
     renderMonth();
     renderSidebarMonth();
@@ -1169,6 +1344,7 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email, company
     );
 
     const company = COMPANIES.find((c) => c.id === companyId);
+    const expiresAt = Date.now() + TEMP_HOLD_DURATION;
     const appt = {
         companyId: companyId,
         companyName: company ? company.name : 'Unknown Company',
@@ -1176,7 +1352,9 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email, company
         startIdx,
         endIdx,
         status: 'TEMP',
-        email: email || 'client@example.com'
+        email: email || 'client@example.com',
+        expiresAt: expiresAt,
+        createdAt: Date.now()
     };
 
     if (match) {
@@ -1194,12 +1372,18 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email, company
 
     state.appts[id] = appt;
 
-    const subj = `Your appointment is temporarily reserved – please confirm`;
+    const timeRemaining = formatTimeRemaining(TEMP_HOLD_DURATION);
+    const subj = `Your appointment is temporarily reserved – please confirm within ${Math.floor(
+        TEMP_HOLD_DURATION / (60 * 60 * 1000)
+    )} hours`;
     const body = `<p>Thanks for your request.</p>
 <p><strong>Company:</strong> ${appt.companyName}<br/>
 <strong>Date:</strong> ${dateKey}<br/>
 <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
-<p>This booking is <em>temporary</em>. Please Approve or Reject below.</p>`;
+<p>This booking is <em>temporary</em> and will expire in <strong>${timeRemaining}</strong>. Please Approve or Reject below.</p>
+<p><em>⏰ You have ${Math.floor(
+        TEMP_HOLD_DURATION / (60 * 60 * 1000)
+    )} hours to respond before this reservation expires.</em></p>`;
     pushEmail({ subj, body, apptId: id, to: appt.email });
     renderDay();
     renderMonth();
@@ -2244,6 +2428,25 @@ function init() {
 
     // Restore page
     switchPage(state.currentPage || 'admin');
+
+    // Initialize timer for periodic cleanup of expired appointments
+    if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+    }
+
+    // Check for expired appointments every 10 seconds
+    state.timerInterval = setInterval(() => {
+        cleanupExpiredAppointments();
+        // Refresh mail display to update timers
+        renderMail();
+        // Refresh day display to update slot timers
+        if (state.currentPage === 'admin') {
+            renderDay();
+        }
+    }, 10000);
+
+    // Initial cleanup on startup
+    cleanupExpiredAppointments();
 
     // Run tests (console)
     runTests();
