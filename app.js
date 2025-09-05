@@ -264,11 +264,23 @@ function renderDay() {
         let displayText = slots[i];
 
         if (slots[i] === 'BOOKED' || slots[i] === 'TEMP') {
-            if (apptInfo && apptInfo.type === 'appointment') {
-                const customerName = apptInfo.data.customerName || 'Unknown';
-                const email = apptInfo.data.email || '';
-                displayText = `${slots[i]} - ${customerName}`;
+            let customerName = 'Unknown';
+            let email = '';
+            let shouldShowActions = false;
 
+            if (apptInfo && apptInfo.type === 'appointment') {
+                customerName = apptInfo.data.customerName || 'Unknown';
+                email = apptInfo.data.email || '';
+                shouldShowActions = true;
+            } else if (apptInfo && apptInfo.type === 'request') {
+                customerName = apptInfo.data.customer.name || 'Unknown';
+                email = apptInfo.data.customer.email || '';
+                shouldShowActions = true;
+            }
+
+            displayText = `${slots[i]} - ${customerName}`;
+
+            if (shouldShowActions) {
                 // Add action buttons for booked/temp slots
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'slot-actions';
