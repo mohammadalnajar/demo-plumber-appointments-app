@@ -54,6 +54,7 @@ body {
     display: grid;
     grid-template-columns: 240px 1fr;
     min-height: 100vh;
+    overflow-x: hidden; /* Prevent horizontal scroll */
 }
 @media (max-width: 900px) {
     .sidebar-toggle {
@@ -404,11 +405,37 @@ body {
     display: grid;
     grid-template-columns: 1fr 350px;
     gap: 20px;
+    min-width: 0; /* Prevent grid overflow */
+    overflow: hidden; /* Prevent horizontal scroll */
+}
+
+@media (max-width: 1400px) {
+    .multi-calendar-grid {
+        grid-template-columns: 1fr 300px;
+        gap: 16px;
+    }
 }
 
 @media (max-width: 1200px) {
     .multi-calendar-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .multi-calendar-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .multi-calendar-container {
+        padding: 12px;
+    }
+
+    .day-details-panel {
+        padding: 12px;
+        max-height: 400px;
     }
 }
 
@@ -417,10 +444,13 @@ body {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 16px;
+    min-width: 0; /* Prevent overflow */
+    overflow: hidden; /* Hide any internal overflow */
 }
 
 .multi-calendar {
     width: 100%;
+    min-width: 0; /* Allow shrinking */
 }
 
 .multi-calendar .calendar-header {
@@ -522,6 +552,8 @@ body {
     padding: 16px;
     max-height: 600px;
     overflow-y: auto;
+    min-width: 0; /* Allow shrinking */
+    width: 100%; /* Take full available width in grid */
 }
 
 .day-details-header {
@@ -684,6 +716,8 @@ body {
 /* Panels */
 .page {
     padding: 16px;
+    min-width: 0; /* Prevent overflow */
+    overflow-x: hidden; /* Hide horizontal scroll */
 }
 .panel {
     background: var(--panel);

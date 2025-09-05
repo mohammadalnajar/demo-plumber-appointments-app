@@ -9,6 +9,7 @@ A comprehensive web-based appointment scheduling system designed for plumbing se
 - **Company-Specific Calendars**: Each company has its own independent schedule
 - **Admin Company Selection**: Switch between companies to manage their individual calendars
 - **Cross-Company Booking**: Clients can book with any available company without choosing one themselves
+- **Multi-Company Calendar Dashboard**: Comprehensive overview of all companies' schedules in one unified view
 
 ### Admin Dashboard
 - **Calendar View**: Visual month calendar with availability indicators
@@ -16,6 +17,16 @@ A comprehensive web-based appointment scheduling system designed for plumbing se
 - **Appointment Management**: Create temporary holds or confirmed appointments
 - **Request Processing**: Review and approve client booking requests
 - **Company Assignment**: Assign client requests to specific companies during approval
+- **Sidebar Overview**: Quick glance at all companies' availability with color-coded indicators
+
+### Multi-Company Calendar Dashboard
+- **Unified Calendar View**: Large, professional calendar grid showing all companies' appointments
+- **Advanced Filtering**: Toggle visibility of individual companies with real-time filtering
+- **Interactive Day Details**: Click any day to see detailed appointments for all companies
+- **Color-Coded Organization**: Each company has distinctive colors for easy identification
+- **Professional Appointment Cards**: Detailed view with time slots, customer info, and status
+- **Smart Layout**: Responsive design that works perfectly on desktop and mobile
+- **Real-Time Updates**: Automatically syncs with all appointment changes across the system
 
 ### Client Booking Interface
 - **Service Selection**: Choose from predefined plumbing services
@@ -23,17 +34,20 @@ A comprehensive web-based appointment scheduling system designed for plumbing se
 - **Smart Questionnaire**: Service-specific questions for accurate estimates
 - **Time Selection**: View and select from all available time slots across companies
 - **Request Submission**: Send booking requests for admin review
+- **Cross-Company Availability**: System automatically finds available slots from any company
 
 ### Communication System
 - **Email Simulation**: Mock email system showing all client communications
 - **Automated Notifications**: Confirmation and rejection emails
 - **Status Updates**: Real-time appointment status changes
 - **Professional Templates**: Pre-formatted email content
+- **Interactive Email Actions**: Approve/reject appointments directly from email interface
 
 ### Service Catalog
 - **Blockage/Verstopping Service**: 1-hour service with location-based pricing
 - **Bathroom Renovation**: 2-hour consultation with quotation-based pricing
 - **Dynamic Questions**: Service-specific forms for accurate estimates
+- **Flexible Pricing Logic**: Custom price calculation based on customer responses
 
 ## 🏗️ Architecture
 
@@ -98,6 +112,19 @@ state = {
 - **Day View**: Detailed time slots with appointment information
 - **Appointment Controls**: Create temp holds or confirmed appointments
 - **Request Queue**: List of pending client requests with approval options
+- **Sidebar Quick View**: Compact overview calendar showing all companies simultaneously
+
+### Multi-Company Calendar Dashboard
+- **Unified Calendar Grid**: Professional large-scale calendar showing all companies
+- **Company Filter Controls**: Checkboxes to show/hide specific companies
+- **Month Navigation**: Easy navigation between months with arrow controls
+- **Interactive Day Selection**: Click any day to see detailed appointment information
+- **Detailed Appointment Panel**: Right-side panel showing:
+  - Complete appointment details grouped by company
+  - Time slots with customer names and service types
+  - Status indicators (Confirmed/Temporary Hold)
+  - Professional color-coded organization
+- **Responsive Design**: Adapts beautifully to different screen sizes
 
 ### Client Booking Page
 - **Personal Information**: Name and email collection
@@ -111,6 +138,7 @@ state = {
 - **Inbox View**: All generated emails displayed chronologically
 - **Email Actions**: Approve/reject buttons for appointment confirmations
 - **Status Tracking**: Visual indicators for email status
+- **Professional Email Templates**: Well-formatted HTML emails
 
 ## 🎯 Workflow Examples
 
@@ -138,6 +166,14 @@ state = {
 4. Approves request or proposes alternative time
 5. System updates calendars and sends notifications
 
+### Scenario 4: Multi-Company Overview Management
+1. Admin clicks "Multi-Company Calendar" in sidebar
+2. Views unified calendar showing all companies' appointments
+3. Uses company filters to focus on specific businesses
+4. Clicks on busy days to see detailed breakdown
+5. Identifies scheduling conflicts or optimization opportunities
+6. Coordinates resources across multiple companies
+
 ## 🛠️ Technical Implementation
 
 ### Frontend Technologies
@@ -162,6 +198,16 @@ state = {
 
 ## 📋 Feature Details
 
+### Multi-Company Calendar Dashboard
+The centerpiece feature providing comprehensive oversight:
+- **Large Calendar Grid**: Professional monthly view with clear day cells
+- **Appointment Indicators**: Mini preview cards showing time and company
+- **Real-Time Filtering**: Toggle company visibility with instant updates
+- **Detailed Day View**: Complete breakdown of appointments by company
+- **Professional Design**: Consistent with the overall application theme
+- **Mobile Responsive**: Optimized for tablets and smartphones
+- **Smart Overflow**: Shows "N more" indicators when days have many appointments
+
 ### Service Configuration
 Services are defined with:
 - **Duration**: Time slots required for service
@@ -180,12 +226,20 @@ Services are defined with:
 - **Independent Schedules**: Separate calendars per company
 - **Resource Allocation**: Smart assignment during booking
 - **Availability Tracking**: Real-time slot monitoring
+- **Visual Identity**: Each company has distinctive colors throughout the system
 
 ### Email System
 - **Template Engine**: Dynamic email content generation
 - **Status Tracking**: Delivery and response monitoring
 - **Action Integration**: Direct actions from email interface
 - **Professional Formatting**: HTML email templates
+
+### Advanced UI Features
+- **Sidebar Overview**: Quick-glance availability across all companies
+- **Interactive Calendars**: Click-to-select functionality
+- **Status Indicators**: Clear visual feedback for appointment states
+- **Responsive Layout**: Adapts to screen sizes from mobile to desktop
+- **Professional Styling**: Modern dark theme with consistent branding
 
 ## 🔧 Configuration
 
@@ -227,6 +281,7 @@ The application automatically creates demo data on first run:
 - Sample appointments across different companies
 - Demo client requests
 - Email history examples
+- Multi-company scheduling scenarios
 
 ### Test Scenarios
 1. **Multi-Company Booking**: Test slot availability across companies
@@ -234,6 +289,15 @@ The application automatically creates demo data on first run:
 3. **Email Flow**: Confirm all notification emails are generated
 4. **Calendar Management**: Test appointment creation and modification
 5. **Data Persistence**: Verify state is saved and restored
+6. **Multi-Company Dashboard**: Test filtering, day selection, and detailed views
+7. **Responsive Design**: Verify functionality across different screen sizes
+8. **Cross-Company Operations**: Test scenarios involving multiple companies
+
+### Demo Features
+- **Interactive Tutorial**: Built-in guidance for new users
+- **Sample Data**: Realistic appointment scenarios
+- **Live Updates**: See changes reflected across all views instantly
+- **Professional Presentation**: Ready for client demonstrations
 
 ## 📈 Usage Analytics
 
@@ -292,6 +356,9 @@ plumber-calendar/
 - **Reporting Dashboard**: Analytics and insights
 - **Multi-language Support**: Internationalization
 - **Accessibility Enhancements**: WCAG compliance improvements
+- **Advanced Analytics**: Detailed reporting on company performance, utilization rates, and revenue tracking
+- **Calendar Integrations**: Two-way sync with Google Calendar, Outlook, and other calendar systems
+- **Advanced Notifications**: SMS, push notifications, and email templates customization
 
 ## 📞 Support & Documentation
 
@@ -310,5 +377,6 @@ plumber-calendar/
 ---
 
 **Last Updated**: September 5, 2025  
-**Version**: 4.0 (Multi-Company Support)  
-**Compatibility**: Modern Browsers, Mobile-Responsive
+**Version**: 5.0 (Multi-Company Calendar Dashboard)  
+**Compatibility**: Modern Browsers, Mobile-Responsive  
+**New Features**: Unified multi-company calendar view with advanced filtering and detailed day breakdown
