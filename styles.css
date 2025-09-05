@@ -394,9 +394,9 @@ body {
     letter-spacing: 0.5px;
     box-shadow: 0 3px 10px rgba(59, 130, 246, 0.25);
     transition: all 0.18s ease;
-    padding: 10px 14px;
+    padding: 12px 16px;
     font-size: 13px;
-    /* min-height: 40px; */
+    min-height: 44px;
 }
 .controls button:hover {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -407,40 +407,51 @@ body {
     transform: translateY(0);
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
-.controls button#btnResetDay {
-    background: linear-gradient(135deg, var(--gray), #6b7280);
-    grid-column: span 1;
-    padding: 9px 12px;
-    font-size: 13px;
-    min-height: 36px;
-}
 
 /* Controls actions wrapper - lays out the three admin buttons */
 .controls-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     align-items: center;
     justify-content: flex-start;
     width: 100%;
+    grid-column: span 2; /* Takes full width in the controls grid */
 }
+
+/* Override button styles for controls-actions buttons */
+.controls-actions button {
+    grid-column: unset; /* Remove grid column spanning */
+    padding: 12px 16px;
+    font-size: 13px;
+    min-height: 44px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
 .controls-actions .primary {
     flex: 1 1 auto; /* primary buttons expand */
 }
 .controls-actions .secondary {
     flex: 0 0 auto; /* reset stays compact */
+    background: linear-gradient(135deg, var(--gray), #6b7280) !important;
+    min-width: 120px;
 }
+.controls-actions .secondary:hover {
+    background: linear-gradient(135deg, #6b7280, #4b5563) !important;
+    box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4);
+}
+
 @media (max-width: 700px) {
     .controls-actions {
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
     }
-    .controls-actions .primary {
+    .controls-actions .primary,
+    .controls-actions .secondary {
         width: 100%;
+        flex: none;
     }
-}
-.controls button#btnResetDay:hover {
-    background: linear-gradient(135deg, #6b7280, #4b5563);
-    box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4);
 }
 
 /* Mail simulator */
