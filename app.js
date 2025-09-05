@@ -790,7 +790,8 @@ function renderRequests() {
                     req.preferred.dateKey,
                     req.preferred.startHHMM,
                     req.preferred.endHHMM,
-                    req.customer.email
+                    req.customer.email,
+                    req.customer.name
                 );
             }
             if (apptId) {
@@ -828,7 +829,7 @@ function renderRequests() {
         btnProp.textContent = 'Propose Custom Time';
         btnProp.onclick = () => {
             releaseHold(req);
-            const apptId = createTempAppointment(d.value, s.value, e.value, req.customer.email);
+            const apptId = createTempAppointment(d.value, s.value, e.value, req.customer.email, req.customer.name);
             if (apptId) {
                 req.status = 'PROPOSED';
                 req.apptId = apptId;
@@ -874,6 +875,8 @@ function renderRequests() {
                     endIdx,
                     status: 'CONFIRMED',
                     client: req.customer,
+                    customerName: req.customer.name,
+                    email: req.customer.email,
                     serviceName: req.serviceName
                 };
                 req.apptId = newApptId;
@@ -950,6 +953,8 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email) {
         appt.email = match.customer.email;
         appt.serviceName = match.serviceName;
         match.apptId = id;
+        // Remove the hold since we now have a proper appointment
+        match.hold = null;
     } else {
         appt.customerName = 'Unknown Client';
     }
