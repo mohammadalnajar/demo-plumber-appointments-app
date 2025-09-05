@@ -2702,6 +2702,43 @@ function runTests() {
     console.groupEnd();
 }
 
+// --- Theme Management ---
+function initTheme() {
+    // Load saved theme or default to dark
+    const savedTheme = localStorage.getItem('plumberDemoTheme') || 'dark';
+    applyTheme(savedTheme);
+
+    // Set up theme switcher button
+    const themeSwitcher = document.getElementById('theme-switcher');
+    if (themeSwitcher) {
+        themeSwitcher.addEventListener('click', toggleTheme);
+        updateThemeIcon(savedTheme);
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('plumberDemoTheme', theme);
+}
+
+function updateThemeIcon(theme) {
+    const themeSwitcher = document.getElementById('theme-switcher');
+    if (themeSwitcher) {
+        themeSwitcher.textContent = theme === 'dark' ? '☀️' : '🌙';
+        themeSwitcher.setAttribute(
+            'aria-label',
+            `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`
+        );
+    }
+}
+
 // --- Bootstrap ---
 function init() {
     // Initialize company schedules
@@ -2868,6 +2905,9 @@ function init() {
             }
         });
     }
+
+    // Initialize theme switcher
+    initTheme();
 
     const sSel = document.getElementById('c_service');
     if (sSel) {
