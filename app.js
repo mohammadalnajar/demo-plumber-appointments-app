@@ -432,6 +432,7 @@ function clearClientError() {
 // --- Popup for appointment details ---
 function findAppointmentInfo(dateKey, slotIndex) {
     // Look for appointment covering the slot in the selected company
+    // Include cancelled appointments for viewing details, but they don't block slots
     for (const apptId in state.appts) {
         const appt = state.appts[apptId];
         if (
@@ -505,6 +506,9 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         <span class="popup-value">${(appt.endIdx - appt.startIdx) * SLOT_MIN} minutes</span>
       </div>
       <div style="margin-top: 16px; display: flex; gap: 8px;">
+        ${
+            appt.status !== 'CANCELLED'
+                ? `
         <button class="btn" onclick="
           const phone = prompt('Enter phone number for ${customerName}:');
           if (phone) {
@@ -517,6 +521,14 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
           const body = encodeURIComponent('Hi ${customerName},\\n\\nRegarding your appointment on ${dateKey} at ${startTime}.\\n\\nBest regards,\\nPlumber Service');
           window.open('mailto:${email}?subject=' + subject + '&body=' + body, '_blank');
         ">📧 Email</button>
+        `
+                : '<span style="color: var(--sub); font-style: italic;">This appointment has been cancelled</span>'
+        }
+        ${
+            appt.status === 'CONFIRMED'
+                ? `<button class="btn btn-cancel" onclick="cancelAppointment(${info.apptId})" title="Cancel this appointment">🗑️ Cancel</button>`
+                : ''
+        }
       </div>
     `;
     } else if (info?.type === 'request') {
@@ -808,6 +820,61 @@ function rejectAppointment(apptId) {
     refreshMultiCalendarIfActive();
     renderMail();
     saveState();
+}
+
+function cancelAppointment(apptId) {
+    const appt = state.appts[apptId];
+    if (!appt) return;
+
+    // Show confirmation dialog
+    const customerName = appt.customerName || (appt.client ? appt.client.name : 'Unknown');
+    const startTime = minutesToHHMM(WORK_START * 60 + appt.startIdx * SLOT_MIN);
+    const endTime = minutesToHHMM(WORK_START * 60 + appt.endIdx * SLOT_MIN);
+
+    const confirmCancel = confirm(
+        `Are you sure you want to cancel this appointment?\n\n` +
+            `Customer: ${customerName}\n` +
+            `Date: ${appt.dateKey}\n` +
+            `Time: ${startTime} - ${endTime}\n\n` +
+            `This action cannot be undone.`
+    );
+
+    if (!confirmCancel) return;
+
+    // Free up the time slots
+    const slots = state.schedule[appt.companyId][appt.dateKey];
+    for (let i = appt.startIdx; i < appt.endIdx; i++) slots[i] = 'FREE';
+
+    // Mark appointment as cancelled
+    appt.status = 'CANCELLED';
+
+    // Send cancellation email
+    const email = appt.email || (appt.client ? appt.client.email : '');
+    if (email && email.includes('@')) {
+        const subj = `Appointment Cancelled - ${appt.dateKey}`;
+        const body = `<p>Dear ${customerName},</p>
+<p>We regret to inform you that your appointment has been cancelled.</p>
+<p><strong>Company:</strong> ${appt.companyName || 'Plumber Service'}<br/>
+<strong>Date:</strong> ${appt.dateKey}<br/>
+<strong>Time:</strong> ${startTime}–${endTime}</p>
+<p>We apologize for any inconvenience this may cause. Please contact us to reschedule.</p>
+<p>Best regards,<br/>
+${appt.companyName || 'Plumber Service'}</p>`;
+        pushEmail({ subj, body, apptId, to: email });
+    }
+
+    // Update all views
+    renderDay();
+    renderMonth();
+    renderSidebarMonth();
+    refreshMultiCalendarIfActive();
+    saveState();
+
+    // Close the popup
+    const overlay = document.querySelector('.popup-overlay');
+    if (overlay) {
+        document.body.removeChild(overlay);
+    }
 }
 
 // --- Requests (Admin) ---

@@ -545,6 +545,14 @@ body {
     color: #e5e7eb;
 }
 
+.multi-calendar .appointment-indicator.cancelled {
+    background: rgba(159, 18, 57, 0.15);
+    border-left-color: #be123c;
+    color: #fecdd3;
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
 .day-details-panel {
     background: var(--card);
     border: 1px solid var(--border);
@@ -676,6 +684,12 @@ body {
 .appointment-status.temp {
     background: rgba(156, 163, 175, 0.18);
     color: #9ca3af;
+}
+
+.appointment-status.cancelled {
+    background: rgba(159, 18, 57, 0.15);
+    color: #be123c;
+    text-decoration: line-through;
 }
 
 .no-appointments {
@@ -1098,6 +1112,16 @@ body {
 .btn.reject:hover {
     background: linear-gradient(135deg, #dc2626, #b91c1c);
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+.btn.btn-cancel {
+    background: linear-gradient(135deg, #9f1239, #be123c);
+    border-color: #be123c;
+    color: white;
+}
+.btn.btn-cancel:hover {
+    background: linear-gradient(135deg, #881337, #9f1239);
+    box-shadow: 0 4px 12px rgba(159, 18, 57, 0.3);
+    transform: translateY(-1px);
 }
 
 /* Action buttons in slots */
