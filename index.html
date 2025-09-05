@@ -15,6 +15,43 @@
                     <button id="nav-admin" class="active">Admin</button>
                     <button id="nav-client">Client Booking</button>
                 </div>
+
+                <!-- Combined Calendar Overview -->
+                <div class="sidebar-calendar">
+                    <h3>All Companies Overview</h3>
+                    <div class="sidebar-calendar-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--green)"></div>
+                            <span>Available</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--gray)"></div>
+                            <span>Temp Hold</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--red)"></div>
+                            <span>Booked</span>
+                        </div>
+                    </div>
+                    <div id="sidebar-month" class="sidebar-month"></div>
+                    <div class="sidebar-companies">
+                        <div class="company-legend">
+                            <div class="company-item">
+                                <div class="company-color" style="background: #22c55e"></div>
+                                <span>Quick Fix</span>
+                            </div>
+                            <div class="company-item">
+                                <div class="company-color" style="background: #3b82f6"></div>
+                                <span>Professional</span>
+                            </div>
+                            <div class="company-item">
+                                <div class="company-color" style="background: #f59e0b"></div>
+                                <span>Emergency</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <p class="note" style="margin-top: 12px">
                     State persists in your browser via <strong>localStorage</strong>.
                 </p>

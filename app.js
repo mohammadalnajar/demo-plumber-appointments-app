@@ -721,6 +721,7 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName,
     state.appts[id] = appt;
     renderDay();
     renderMonth();
+    renderSidebarMonth();
     saveState();
 
     const subj = `Your appointment is temporarily reserved – please confirm`;
@@ -766,6 +767,7 @@ function createFinalAppointment(
     state.appts[id] = appt;
     renderDay();
     renderMonth();
+    renderSidebarMonth();
     saveState();
 
     const subj = `Your appointment is confirmed`;
@@ -786,6 +788,7 @@ function confirmAppointment(apptId) {
     appt.status = 'CONFIRMED';
     renderDay();
     renderMonth();
+    renderSidebarMonth();
     renderMail();
     saveState();
 }
@@ -798,6 +801,7 @@ function rejectAppointment(apptId) {
     appt.status = 'REJECTED';
     renderDay();
     renderMonth();
+    renderSidebarMonth();
     renderMail();
     saveState();
 }
@@ -1463,6 +1467,7 @@ function onResetDay() {
     for (let i = 0; i < slots.length; i++) slots[i] = 'FREE';
     renderDay();
     renderMonth();
+    renderSidebarMonth();
     saveState();
 }
 
@@ -1488,6 +1493,140 @@ function switchPage(p) {
             sidebar.classList.remove('open');
         }
     }
+}
+
+// --- Sidebar Combined Calendar ---
+function renderSidebarMonth() {
+    const wrap = document.getElementById('sidebar-month');
+    if (!wrap) return;
+
+    wrap.innerHTML = '';
+    const d = new Date(state.monthCursor.getFullYear(), state.monthCursor.getMonth(), 1);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const monthName = d.toLocaleString(undefined, { month: 'short', year: 'numeric' });
+
+    const header = document.createElement('header');
+    const prev = document.createElement('button');
+    prev.textContent = '‹';
+    prev.onclick = () => {
+        state.monthCursor.setMonth(state.monthCursor.getMonth() - 1);
+        renderSidebarMonth();
+        renderMonth();
+        saveState();
+    };
+    const next = document.createElement('button');
+    next.textContent = '›';
+    next.onclick = () => {
+        state.monthCursor.setMonth(state.monthCursor.getMonth() + 1);
+        renderSidebarMonth();
+        renderMonth();
+        saveState();
+    };
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = monthName;
+    header.append(prev, title, next);
+
+    const dow = document.createElement('div');
+    dow.className = 'sidebar-dow';
+    ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach((d) => {
+        const cell = document.createElement('div');
+        cell.textContent = d;
+        dow.appendChild(cell);
+    });
+
+    const days = document.createElement('div');
+    days.className = 'sidebar-days';
+    const firstDow = (d.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Empty cells for previous month
+    for (let i = 0; i < firstDow; i++) {
+        const prevDate = new Date(year, month, i - firstDow + 1);
+        const cell = sidebarDayCell(prevDate, true);
+        days.appendChild(cell);
+    }
+
+    // Days of current month
+    for (let i = 1; i <= daysInMonth; i++) {
+        const date = new Date(year, month, i);
+        const cell = sidebarDayCell(date, false);
+        days.appendChild(cell);
+    }
+
+    // Empty cells for next month
+    const totalCells = firstDow + daysInMonth;
+    const trailing = (7 - (totalCells % 7)) % 7;
+    for (let i = 1; i <= trailing; i++) {
+        const nextDate = new Date(year, month + 1, i);
+        const cell = sidebarDayCell(nextDate, true);
+        days.appendChild(cell);
+    }
+
+    wrap.append(header, dow, days);
+}
+
+function sidebarDayCell(date, isOut) {
+    const dateKey = formatDateKey(date);
+    const cell = document.createElement('div');
+    cell.className = 'sidebar-day' + (isOut ? ' out' : '');
+
+    if (formatDateKey(state.selectedDate) === dateKey) {
+        cell.classList.add('selected');
+    }
+
+    const num = document.createElement('div');
+    num.className = 'num';
+    num.textContent = date.getDate();
+
+    const indicators = document.createElement('div');
+    indicators.className = 'company-indicators';
+
+    // Get status for each company
+    COMPANIES.forEach((company) => {
+        const bar = document.createElement('div');
+        bar.className = 'company-bar';
+
+        // Ensure day exists for this company
+        if (!state.schedule[company.id]) {
+            state.schedule[company.id] = {};
+        }
+        if (!state.schedule[company.id][dateKey]) {
+            ensureDay(dateKey, company.id);
+        }
+
+        const slots = state.schedule[company.id][dateKey];
+        const hasBooked = slots.includes('BOOKED');
+        const hasTemp = slots.includes('TEMP');
+
+        if (hasBooked) {
+            bar.style.background = '#ef4444'; // Red for booked
+        } else if (hasTemp) {
+            bar.style.background = '#9ca3af'; // Gray for temp
+        } else {
+            bar.style.background = '#22c55e'; // Green for available
+        }
+
+        // Add company color as border
+        bar.style.border = `1px solid ${company.color}`;
+        bar.style.borderRadius = '1px';
+
+        indicators.appendChild(bar);
+    });
+
+    cell.appendChild(num);
+    cell.appendChild(indicators);
+
+    cell.onclick = () => {
+        state.selectedDate = new Date(date);
+        syncDatePicker();
+        renderDay();
+        renderSidebarMonth();
+        saveState();
+    };
+
+    return cell;
 }
 
 // --- Tiny Test Suite (console) ---
@@ -1603,6 +1742,7 @@ function init() {
         companySelect.addEventListener('change', (e) => {
             state.selectedCompanyId = e.target.value;
             renderMonth();
+            renderSidebarMonth();
             renderDay();
             saveState();
         });
@@ -1612,6 +1752,7 @@ function init() {
     buildTimeOptions();
     syncDatePicker();
     renderMonth();
+    renderSidebarMonth();
     renderDay();
     renderMail();
     renderRequests();
@@ -1631,6 +1772,7 @@ function init() {
         dp.addEventListener('change', (e) => {
             state.selectedDate = parseDateKey(e.target.value);
             renderMonth();
+            renderSidebarMonth();
             renderDay();
             saveState();
         });
