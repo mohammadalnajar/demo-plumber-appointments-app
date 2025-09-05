@@ -2,7 +2,14 @@
 const WORK_START = 8; // 08:00
 const WORK_END = 18; // 18:00
 const SLOT_MIN = 30; // 30-min slots
-const STORAGE_KEY = 'plumberDemoState_v3';
+const STORAGE_KEY = 'plumberDemoState_v4';
+
+// Demo companies
+const COMPANIES = [
+    { id: 'C1', name: 'Quick Fix Plumbing', color: '#22c55e' },
+    { id: 'C2', name: 'Professional Drain Services', color: '#3b82f6' },
+    { id: 'C3', name: 'Emergency Plumbing 24/7', color: '#f59e0b' }
+];
 
 // Demo services catalog
 const SERVICES = [
@@ -75,9 +82,10 @@ function hhmmToMinutes(hhmm) {
 const state = {
     monthCursor: new Date(),
     selectedDate: new Date(),
-    schedule: {}, // dateKey -> ['FREE'|'TEMP'|'BOOKED']
+    selectedCompanyId: 'C1', // Default to first company
+    schedule: {}, // companyId -> dateKey -> ['FREE'|'TEMP'|'BOOKED']
     emails: [], // {id, subj, body, apptId, status, to}
-    appts: {}, // apptId -> {dateKey,startIdx,endIdx,status}
+    appts: {}, // apptId -> {companyId,dateKey,startIdx,endIdx,status}
     requests: [], // array of request objects (client → admin)
     nextApptId: 1,
     nextEmailId: 1,
@@ -91,6 +99,7 @@ function saveState() {
     const data = {
         monthCursor: state.monthCursor.toISOString(),
         selectedDate: state.selectedDate.toISOString(),
+        selectedCompanyId: state.selectedCompanyId,
         schedule: state.schedule,
         emails: state.emails,
         appts: state.appts,
@@ -108,6 +117,7 @@ function loadState() {
         const data = JSON.parse(raw);
         if (data.monthCursor) state.monthCursor = new Date(data.monthCursor);
         if (data.selectedDate) state.selectedDate = new Date(data.selectedDate);
+        state.selectedCompanyId = data.selectedCompanyId || 'C1';
         Object.assign(state.schedule, data.schedule || {});
         state.emails = data.emails || [];
         state.appts = data.appts || {};
@@ -115,6 +125,14 @@ function loadState() {
         state.nextApptId = data.nextApptId || 1;
         state.nextEmailId = data.nextEmailId || 1;
         state.nextRequestId = data.nextRequestId || 1;
+
+        // Initialize company schedules if they don't exist
+        COMPANIES.forEach((company) => {
+            if (!state.schedule[company.id]) {
+                state.schedule[company.id] = {};
+            }
+        });
+
         return true;
     } catch (e) {
         console.warn('Failed to load saved state', e);
@@ -122,14 +140,37 @@ function loadState() {
     }
 }
 
-// Initialize default day slots as FREE
-function ensureDay(dateKey) {
-    if (!state.schedule[dateKey]) {
+// Initialize default day slots as FREE for a specific company
+function ensureDay(dateKey, companyId = null) {
+    const cId = companyId || state.selectedCompanyId;
+    if (!state.schedule[cId]) {
+        state.schedule[cId] = {};
+    }
+    if (!state.schedule[cId][dateKey]) {
         const slots = [];
         const total = ((WORK_END - WORK_START) * 60) / SLOT_MIN;
         for (let i = 0; i < total; i++) slots.push('FREE');
-        state.schedule[dateKey] = slots;
+        state.schedule[cId][dateKey] = slots;
     }
+}
+
+// Get combined slots from all companies for client view
+function getCombinedSlots(dateKey) {
+    const combined = [];
+    const total = ((WORK_END - WORK_START) * 60) / SLOT_MIN;
+
+    for (let i = 0; i < total; i++) {
+        let hasAnyFree = false;
+        for (const company of COMPANIES) {
+            ensureDay(dateKey, company.id);
+            if (state.schedule[company.id][dateKey][i] === 'FREE') {
+                hasAnyFree = true;
+                break;
+            }
+        }
+        combined.push(hasAnyFree ? 'FREE' : 'OCCUPIED');
+    }
+    return combined;
 }
 
 // --- Month calendar rendering (Admin) ---
@@ -204,7 +245,7 @@ function dayCell(date, isOut) {
     num.textContent = date.getDate();
     const dots = document.createElement('div');
     dots.className = 'dots';
-    const slots = state.schedule[dateKey];
+    const slots = state.schedule[state.selectedCompanyId][dateKey];
     const hasBooked = slots.includes('BOOKED');
     const hasTemp = slots.includes('TEMP');
     if (hasBooked) {
@@ -243,7 +284,7 @@ function renderDay() {
     container.innerHTML = '';
     const dateKey = formatDateKey(state.selectedDate);
     ensureDay(dateKey);
-    const slots = state.schedule[dateKey];
+    const slots = state.schedule[state.selectedCompanyId][dateKey];
     const startMin = WORK_START * 60;
     const total = slots.length;
 
@@ -390,17 +431,23 @@ function clearClientError() {
 
 // --- Popup for appointment details ---
 function findAppointmentInfo(dateKey, slotIndex) {
-    // Look for appointment covering the slot
+    // Look for appointment covering the slot in the selected company
     for (const apptId in state.appts) {
         const appt = state.appts[apptId];
-        if (appt.dateKey === dateKey && slotIndex >= appt.startIdx && slotIndex < appt.endIdx) {
+        if (
+            appt.companyId === state.selectedCompanyId &&
+            appt.dateKey === dateKey &&
+            slotIndex >= appt.startIdx &&
+            slotIndex < appt.endIdx
+        ) {
             return { type: 'appointment', data: appt, apptId };
         }
     }
-    // Look for request hold covering the slot
+    // Look for request hold covering the slot in the selected company
     for (const req of state.requests) {
         if (
             req.hold &&
+            req.hold.companyId === state.selectedCompanyId &&
             req.hold.dateKey === dateKey &&
             slotIndex >= req.hold.startIdx &&
             slotIndex < req.hold.endIdx
@@ -427,6 +474,10 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
       <div class="popup-row">
         <span class="popup-label">Status:</span>
         <span class="popup-value">${appt.status}</span>
+      </div>
+      <div class="popup-row">
+        <span class="popup-label">Company:</span>
+        <span class="popup-value">${appt.companyName || 'Unknown Company'}</span>
       </div>
       <div class="popup-row">
         <span class="popup-label">Customer:</span>
@@ -474,6 +525,7 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         const endTime = minutesToHHMM(WORK_START * 60 + req.hold.endIdx * SLOT_MIN);
 
         title = `Client Request #${req.id}`;
+        const holdCompany = COMPANIES.find((c) => c.id === req.hold?.companyId);
         content = `
       <div class="popup-row">
         <span class="popup-label">Client:</span>
@@ -490,6 +542,10 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
       <div class="popup-row">
         <span class="popup-label">Status:</span>
         <span class="popup-value">${req.status}</span>
+      </div>
+      <div class="popup-row">
+        <span class="popup-label">Held by Company:</span>
+        <span class="popup-value">${holdCompany ? holdCompany.name : 'Unknown Company'}</span>
       </div>
       <div class="popup-row">
         <span class="popup-label">Date:</span>
@@ -638,9 +694,10 @@ function renderMail() {
 }
 
 // --- Appointment creation & transitions ---
-function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName) {
-    ensureDay(dateKey);
-    const slots = state.schedule[dateKey];
+function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName, companyId = null) {
+    const cId = companyId || state.selectedCompanyId;
+    ensureDay(dateKey, cId);
+    const slots = state.schedule[cId][dateKey];
     const startIdx = (hhmmToMinutes(startHHMM) - WORK_START * 60) / SLOT_MIN;
     const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
     if (endIdx <= startIdx) return alert('Invalid time range');
@@ -649,7 +706,10 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName)
     }
     for (let i = startIdx; i < endIdx; i++) slots[i] = 'TEMP';
     const id = state.nextApptId++;
+    const company = COMPANIES.find((c) => c.id === cId);
     const appt = {
+        companyId: cId,
+        companyName: company ? company.name : 'Unknown Company',
         dateKey,
         startIdx,
         endIdx,
@@ -665,16 +725,25 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName)
 
     const subj = `Your appointment is temporarily reserved – please confirm`;
     const body = `<p>Thanks for your request.</p>
-<p><strong>Date:</strong> ${dateKey}<br/>
+<p><strong>Company:</strong> ${appt.companyName}<br/>
+<strong>Date:</strong> ${dateKey}<br/>
 <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
 <p>This booking is <em>temporary</em>. Please Approve or Reject below.</p>`;
     pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
     return id;
 }
 
-function createFinalAppointment(dateKey, startHHMM, endHHMM, email, customerName) {
-    ensureDay(dateKey);
-    const slots = state.schedule[dateKey];
+function createFinalAppointment(
+    dateKey,
+    startHHMM,
+    endHHMM,
+    email,
+    customerName,
+    companyId = null
+) {
+    const cId = companyId || state.selectedCompanyId;
+    ensureDay(dateKey, cId);
+    const slots = state.schedule[cId][dateKey];
     const startIdx = (hhmmToMinutes(startHHMM) - WORK_START * 60) / SLOT_MIN;
     const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
     if (endIdx <= startIdx) return alert('Invalid time range');
@@ -683,7 +752,10 @@ function createFinalAppointment(dateKey, startHHMM, endHHMM, email, customerName
     }
     for (let i = startIdx; i < endIdx; i++) slots[i] = 'BOOKED';
     const id = state.nextApptId++;
+    const company = COMPANIES.find((c) => c.id === cId);
     const appt = {
+        companyId: cId,
+        companyName: company ? company.name : 'Unknown Company',
         dateKey,
         startIdx,
         endIdx,
@@ -698,7 +770,8 @@ function createFinalAppointment(dateKey, startHHMM, endHHMM, email, customerName
 
     const subj = `Your appointment is confirmed`;
     const body = `<p>Your appointment has been confirmed!</p>
-<p><strong>Date:</strong> ${dateKey}<br/>
+<p><strong>Company:</strong> ${appt.companyName}<br/>
+<strong>Date:</strong> ${dateKey}<br/>
 <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
 <p>We look forward to seeing you.</p>`;
     pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
@@ -708,7 +781,7 @@ function createFinalAppointment(dateKey, startHHMM, endHHMM, email, customerName
 function confirmAppointment(apptId) {
     const appt = state.appts[apptId];
     if (!appt) return;
-    const slots = state.schedule[appt.dateKey];
+    const slots = state.schedule[appt.companyId][appt.dateKey];
     for (let i = appt.startIdx; i < appt.endIdx; i++) slots[i] = 'BOOKED';
     appt.status = 'CONFIRMED';
     renderDay();
@@ -720,7 +793,7 @@ function confirmAppointment(apptId) {
 function rejectAppointment(apptId) {
     const appt = state.appts[apptId];
     if (!appt) return;
-    const slots = state.schedule[appt.dateKey];
+    const slots = state.schedule[appt.companyId][appt.dateKey];
     for (let i = appt.startIdx; i < appt.endIdx; i++) slots[i] = 'FREE';
     appt.status = 'REJECTED';
     renderDay();
@@ -752,9 +825,16 @@ function renderRequests() {
         const prefTime = req.preferred?.dateKey
             ? `${req.preferred.dateKey} ${req.preferred.startHHMM}–${req.preferred.endHHMM}`
             : '—';
+        const availableCompaniesText = req.availableCompanies
+            ? req.availableCompanies
+                  .map((cId) => COMPANIES.find((c) => c.id === cId)?.name || cId)
+                  .join(', ')
+            : 'Any';
         meta.textContent = `#REQ${req.id} • ${new Date(
             req.createdAt
-        ).toLocaleString()} • Preferred: ${prefTime} • Status: ${req.status}`;
+        ).toLocaleString()} • Preferred: ${prefTime} • Available Companies: ${availableCompaniesText} • Status: ${
+            req.status
+        }`;
         const body = document.createElement('div');
         const estText =
             req.estimate == null ? 'Quotation will be provided' : `€${req.estimate.toFixed(2)}`;
@@ -769,6 +849,42 @@ function renderRequests() {
         const actions = document.createElement('div');
         actions.className = 'actions';
 
+        // Company selection for proposed appointments
+        const companySelectDiv = document.createElement('div');
+        companySelectDiv.style.marginBottom = '8px';
+        const companyLabel = document.createElement('label');
+        companyLabel.textContent = 'Assign to Company: ';
+        companyLabel.style.color = 'var(--sub)';
+        companyLabel.style.fontSize = '12px';
+        const companySelect = document.createElement('select');
+        companySelect.style.background = 'var(--muted)';
+        companySelect.style.border = '1px solid var(--border)';
+        companySelect.style.color = 'var(--text)';
+        companySelect.style.padding = '4px 8px';
+        companySelect.style.borderRadius = '6px';
+        companySelect.style.marginLeft = '8px';
+
+        if (req.availableCompanies && req.availableCompanies.length > 0) {
+            req.availableCompanies.forEach((companyId) => {
+                const company = COMPANIES.find((c) => c.id === companyId);
+                if (company) {
+                    const option = document.createElement('option');
+                    option.value = company.id;
+                    option.textContent = company.name;
+                    companySelect.appendChild(option);
+                }
+            });
+        } else {
+            COMPANIES.forEach((company) => {
+                const option = document.createElement('option');
+                option.value = company.id;
+                option.textContent = company.name;
+                companySelect.appendChild(option);
+            });
+        }
+        companySelectDiv.appendChild(companyLabel);
+        companySelectDiv.appendChild(companySelect);
+
         const btnPropReq = document.createElement('button');
         btnPropReq.className = 'btn approve';
         btnPropReq.textContent = 'Propose Requested Time';
@@ -777,13 +893,15 @@ function renderRequests() {
                 alert('No preferred time selected by client.');
                 return;
             }
+            const selectedCompanyId = companySelect.value;
             let apptId;
             if (req.hold) {
                 apptId = createTempAppointmentFromHold(
                     req.hold.dateKey,
                     req.hold.startIdx,
                     req.hold.endIdx,
-                    req.customer.email
+                    req.customer.email,
+                    selectedCompanyId
                 );
             } else {
                 apptId = createTempAppointment(
@@ -791,12 +909,14 @@ function renderRequests() {
                     req.preferred.startHHMM,
                     req.preferred.endHHMM,
                     req.customer.email,
-                    req.customer.name
+                    req.customer.name,
+                    selectedCompanyId
                 );
             }
             if (apptId) {
                 req.status = 'PROPOSED';
                 req.apptId = apptId;
+                req.assignedCompanyId = selectedCompanyId;
                 saveState();
                 renderRequests();
             }
@@ -804,7 +924,7 @@ function renderRequests() {
 
         const customWrap = document.createElement('div');
         customWrap.style.display = 'grid';
-        customWrap.style.gridTemplateColumns = '1fr 1fr 1fr auto';
+        customWrap.style.gridTemplateColumns = '1fr 1fr 1fr 1fr auto';
         customWrap.style.gap = '6px';
         customWrap.style.marginTop = '8px';
         const d = document.createElement('input');
@@ -824,27 +944,46 @@ function renderRequests() {
                 sel.appendChild(o);
             }
         });
+
+        // Company select for custom time
+        const customCompanySelect = document.createElement('select');
+        customCompanySelect.style.background = 'var(--muted)';
+        customCompanySelect.style.border = '1px solid var(--border)';
+        customCompanySelect.style.color = 'var(--text)';
+        customCompanySelect.style.padding = '6px 8px';
+        customCompanySelect.style.borderRadius = '6px';
+
+        COMPANIES.forEach((company) => {
+            const option = document.createElement('option');
+            option.value = company.id;
+            option.textContent = company.name;
+            customCompanySelect.appendChild(option);
+        });
+
         const btnProp = document.createElement('button');
         btnProp.className = 'btn';
         btnProp.textContent = 'Propose Custom Time';
         btnProp.onclick = () => {
             releaseHold(req);
+            const selectedCompanyId = customCompanySelect.value;
             const apptId = createTempAppointment(
                 d.value,
                 s.value,
                 e.value,
                 req.customer.email,
-                req.customer.name
+                req.customer.name,
+                selectedCompanyId
             );
             if (apptId) {
                 req.status = 'PROPOSED';
                 req.apptId = apptId;
+                req.assignedCompanyId = selectedCompanyId;
                 req.preferred = { dateKey: d.value, startHHMM: s.value, endHHMM: e.value };
                 saveState();
                 renderRequests();
             }
         };
-        customWrap.append(d, s, e, btnProp);
+        customWrap.append(d, s, e, customCompanySelect, btnProp);
 
         const btnReject = document.createElement('button');
         btnReject.className = 'btn reject';
@@ -869,13 +1008,17 @@ function renderRequests() {
         btnApprove.onclick = () => {
             // Book the spot for the client and create an appointment record
             if (req.hold) {
-                const { dateKey, startIdx, endIdx } = req.hold;
-                ensureDay(dateKey);
+                const { dateKey, startIdx, endIdx, companyId } = req.hold;
+                ensureDay(dateKey, companyId);
+                const slots = state.schedule[companyId][dateKey];
                 for (let i = startIdx; i < endIdx; i++) {
-                    state.schedule[dateKey][i] = 'BOOKED';
+                    slots[i] = 'BOOKED';
                 }
+                const company = COMPANIES.find((c) => c.id === companyId);
                 const newApptId = state.nextApptId++;
                 state.appts[newApptId] = {
+                    companyId,
+                    companyName: company ? company.name : 'Unknown Company',
                     dateKey,
                     startIdx,
                     endIdx,
@@ -886,6 +1029,7 @@ function renderRequests() {
                     serviceName: req.serviceName
                 };
                 req.apptId = newApptId;
+                req.assignedCompanyId = companyId;
                 // Remove hold
                 delete req.hold;
                 req.status = 'CONFIRMED';
@@ -898,6 +1042,8 @@ function renderRequests() {
                     subj: 'Your appointment is confirmed',
                     body: `<p>Dear ${req.customer.name},</p><p>Your booking for <strong>${
                         req.serviceName
+                    }</strong> with <strong>${
+                        company ? company.name : 'Unknown Company'
                     }</strong> on <strong>${dateKey}</strong> at <strong>${minutesToHHMM(
                         WORK_START * 60 + startIdx * SLOT_MIN
                     )}–${minutesToHHMM(
@@ -910,6 +1056,7 @@ function renderRequests() {
         };
 
         actions.append(btnPropReq, btnApprove, btnReject);
+        card.appendChild(companySelectDiv);
         card.appendChild(actions);
         card.appendChild(customWrap);
 
@@ -919,10 +1066,11 @@ function renderRequests() {
 
 function releaseHold(req) {
     if (req?.hold) {
-        const { dateKey, startIdx, endIdx } = req.hold;
-        ensureDay(dateKey);
+        const { dateKey, startIdx, endIdx, companyId } = req.hold;
+        ensureDay(dateKey, companyId);
+        const slots = state.schedule[companyId][dateKey];
         for (let i = startIdx; i < endIdx; i++) {
-            if (state.schedule[dateKey][i] === 'TEMP') state.schedule[dateKey][i] = 'FREE';
+            if (slots[i] === 'TEMP') slots[i] = 'FREE';
         }
         delete req.hold;
         renderDay();
@@ -931,7 +1079,7 @@ function releaseHold(req) {
     }
 }
 
-function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email) {
+function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email, companyId) {
     const startHHMM = minutesToHHMM(WORK_START * 60 + startIdx * SLOT_MIN);
     const endHHMM = minutesToHHMM(WORK_START * 60 + endIdx * SLOT_MIN);
     const id = state.nextApptId++;
@@ -945,7 +1093,10 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email) {
             r.hold.endIdx === endIdx
     );
 
+    const company = COMPANIES.find((c) => c.id === companyId);
     const appt = {
+        companyId: companyId,
+        companyName: company ? company.name : 'Unknown Company',
         dateKey,
         startIdx,
         endIdx,
@@ -959,6 +1110,7 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email) {
         appt.email = match.customer.email;
         appt.serviceName = match.serviceName;
         match.apptId = id;
+        match.assignedCompanyId = companyId;
         // Remove the hold since we now have a proper appointment
         match.hold = null;
     } else {
@@ -969,7 +1121,8 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email) {
 
     const subj = `Your appointment is temporarily reserved – please confirm`;
     const body = `<p>Thanks for your request.</p>
-<p><strong>Date:</strong> ${dateKey}<br/>
+<p><strong>Company:</strong> ${appt.companyName}<br/>
+<strong>Date:</strong> ${dateKey}<br/>
 <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
 <p>This booking is <em>temporary</em>. Please Approve or Reject below.</p>`;
     pushEmail({ subj, body, apptId: id, to: appt.email });
@@ -1084,23 +1237,45 @@ function updateEstimate() {
 }
 
 function getFreeWindows(dateKey, durationSlots) {
-    ensureDay(dateKey);
-    const slots = state.schedule[dateKey];
     const windows = [];
-    for (let i = 0; i <= slots.length - durationSlots; i++) {
-        let ok = true;
-        for (let j = 0; j < durationSlots; j++) {
-            if (slots[i + j] !== 'FREE') {
-                ok = false;
-                break;
+
+    // Get available slots from any company
+    for (const company of COMPANIES) {
+        ensureDay(dateKey, company.id);
+        const slots = state.schedule[company.id][dateKey];
+
+        for (let i = 0; i <= slots.length - durationSlots; i++) {
+            let ok = true;
+            for (let j = 0; j < durationSlots; j++) {
+                if (slots[i + j] !== 'FREE') {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) {
+                const startHHMM = minutesToHHMM(WORK_START * 60 + i * SLOT_MIN);
+                const endHHMM = minutesToHHMM(WORK_START * 60 + (i + durationSlots) * SLOT_MIN);
+
+                // Check if this time slot is already in windows
+                const exists = windows.find(
+                    (w) => w.startIdx === i && w.endIdx === i + durationSlots
+                );
+                if (!exists) {
+                    windows.push({
+                        startIdx: i,
+                        endIdx: i + durationSlots,
+                        startHHMM,
+                        endHHMM,
+                        availableCompanies: [company]
+                    });
+                } else {
+                    // Add this company to available companies for this time slot
+                    exists.availableCompanies.push(company);
+                }
             }
         }
-        if (ok) {
-            const startHHMM = minutesToHHMM(WORK_START * 60 + i * SLOT_MIN);
-            const endHHMM = minutesToHHMM(WORK_START * 60 + (i + durationSlots) * SLOT_MIN);
-            windows.push({ startIdx: i, endIdx: i + durationSlots, startHHMM, endHHMM });
-        }
     }
+
     return windows;
 }
 
@@ -1187,24 +1362,32 @@ function sendClientRequest() {
         return;
     }
 
-    // Validate selected window still FREE
-    ensureDay(sel.dateKey);
-    const slots = state.schedule[sel.dateKey];
-    let ok = true;
-    for (let i = sel.startIdx; i < sel.endIdx; i++) {
-        if (slots[i] !== 'FREE') {
-            ok = false;
-            break;
+    // Find which companies have this slot available
+    const availableCompanies = [];
+    for (const company of COMPANIES) {
+        ensureDay(sel.dateKey, company.id);
+        const slots = state.schedule[company.id][sel.dateKey];
+        let available = true;
+        for (let i = sel.startIdx; i < sel.endIdx; i++) {
+            if (slots[i] !== 'FREE') {
+                available = false;
+                break;
+            }
+        }
+        if (available) {
+            availableCompanies.push(company.id);
         }
     }
-    if (!ok) {
-        showClientError(
-            'Selected time is no longer available (TEMP/BOOKED). Please pick another slot.'
-        );
+
+    if (availableCompanies.length === 0) {
+        showClientError('Selected time is no longer available. Please pick another slot.');
         return;
     }
 
-    // Hold the slot as TEMP until admin responds
+    // Hold the slot as TEMP in one available company (we'll let admin choose which one)
+    const selectedCompanyId = availableCompanies[0];
+    ensureDay(sel.dateKey, selectedCompanyId);
+    const slots = state.schedule[selectedCompanyId][sel.dateKey];
     for (let i = sel.startIdx; i < sel.endIdx; i++) slots[i] = 'TEMP';
 
     const ans = collectAnswers();
@@ -1225,7 +1408,13 @@ function sendClientRequest() {
             startHHMM: sel.startHHMM,
             endHHMM: sel.endHHMM
         },
-        hold: { dateKey: sel.dateKey, startIdx: sel.startIdx, endIdx: sel.endIdx },
+        availableCompanies: availableCompanies,
+        hold: {
+            dateKey: sel.dateKey,
+            startIdx: sel.startIdx,
+            endIdx: sel.endIdx,
+            companyId: selectedCompanyId
+        },
         status: 'NEW'
     };
     state.requests.unshift(req);
@@ -1268,7 +1457,8 @@ function onBookFinalClick() {
 
 function onResetDay() {
     const key = document.getElementById('datePicker').value;
-    const slots = state.schedule[key];
+    ensureDay(key);
+    const slots = state.schedule[state.selectedCompanyId][key];
     if (!slots) return;
     for (let i = 0; i < slots.length; i++) slots[i] = 'FREE';
     renderDay();
@@ -1335,6 +1525,13 @@ function runTests() {
 
 // --- Bootstrap ---
 function init() {
+    // Initialize company schedules
+    COMPANIES.forEach((company) => {
+        if (!state.schedule[company.id]) {
+            state.schedule[company.id] = {};
+        }
+    });
+
     const had = loadState();
     // Seed a couple of slots if first run
     if (!had) {
@@ -1343,9 +1540,13 @@ function init() {
         // Seed BOOKED 10:00–11:00 and create an appointment record
         const bookedStart = (10 * 60 - WORK_START * 60) / SLOT_MIN;
         const bookedEnd = bookedStart + 2;
-        for (let i = bookedStart; i < bookedEnd; i++) state.schedule[todayKey][i] = 'BOOKED';
+        for (let i = bookedStart; i < bookedEnd; i++)
+            state.schedule[state.selectedCompanyId][todayKey][i] = 'BOOKED';
         const seedApptId = state.nextApptId++;
+        const company = COMPANIES.find((c) => c.id === state.selectedCompanyId);
         state.appts[seedApptId] = {
+            companyId: state.selectedCompanyId,
+            companyName: company ? company.name : 'Unknown Company',
             dateKey: todayKey,
             startIdx: bookedStart,
             endIdx: bookedEnd,
@@ -1357,7 +1558,8 @@ function init() {
         // Seed a TEMP hold 15:00–15:30 with a matching request
         const tempStart = (15 * 60 - WORK_START * 60) / SLOT_MIN;
         const tempEnd = tempStart + 1;
-        for (let i = tempStart; i < tempEnd; i++) state.schedule[todayKey][i] = 'TEMP';
+        for (let i = tempStart; i < tempEnd; i++)
+            state.schedule[state.selectedCompanyId][todayKey][i] = 'TEMP';
         const seedReq = {
             id: state.nextRequestId++,
             createdAt: Date.now(),
@@ -1373,11 +1575,29 @@ function init() {
                 startHHMM: minutesToHHMM(WORK_START * 60 + tempStart * SLOT_MIN),
                 endHHMM: minutesToHHMM(WORK_START * 60 + tempEnd * SLOT_MIN)
             },
-            hold: { dateKey: todayKey, startIdx: tempStart, endIdx: tempEnd },
+            availableCompanies: [state.selectedCompanyId],
+            hold: {
+                dateKey: todayKey,
+                startIdx: tempStart,
+                endIdx: tempEnd,
+                companyId: state.selectedCompanyId
+            },
             status: 'NEW'
         };
         state.requests.unshift(seedReq);
         saveState();
+    }
+
+    // Set up company selector
+    const companySelect = document.getElementById('companySelect');
+    if (companySelect) {
+        companySelect.value = state.selectedCompanyId;
+        companySelect.addEventListener('change', (e) => {
+            state.selectedCompanyId = e.target.value;
+            renderMonth();
+            renderDay();
+            saveState();
+        });
     }
 
     // Admin widgets

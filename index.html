@@ -27,6 +27,33 @@
                 <section class="panel">
                     <h2>Admin Dashboard – Calendar & Availability</h2>
                     <div class="panel-body">
+                        <div style="margin-bottom: 16px">
+                            <label
+                                style="
+                                    color: var(--sub);
+                                    font-size: 14px;
+                                    display: block;
+                                    margin-bottom: 8px;
+                                "
+                            >
+                                Select Company:
+                            </label>
+                            <select
+                                id="companySelect"
+                                style="
+                                    background: var(--muted);
+                                    border: 1px solid var(--border);
+                                    color: var(--text);
+                                    padding: 8px 12px;
+                                    border-radius: 8px;
+                                    min-width: 200px;
+                                "
+                            >
+                                <option value="C1">Quick Fix Plumbing</option>
+                                <option value="C2">Professional Drain Services</option>
+                                <option value="C3">Emergency Plumbing 24/7</option>
+                            </select>
+                        </div>
                         <div class="grid-2">
                             <div>
                                 <div class="month" id="month"></div>
