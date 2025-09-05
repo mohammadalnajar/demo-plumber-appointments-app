@@ -14,6 +14,7 @@
                 <div class="nav">
                     <button id="nav-admin" class="active">Admin</button>
                     <button id="nav-client">Client Booking</button>
+                    <button id="nav-multi-calendar">Multi-Company Calendar</button>
                 </div>
 
                 <!-- Combined Calendar Overview -->
@@ -254,6 +255,59 @@
                                     Send Request
                                 </button>
                                 <div id="c_result" class="note" style="margin-top: 8px"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <!-- MULTI-COMPANY CALENDAR PAGE -->
+            <main id="page-multi-calendar" class="page" style="display: none">
+                <section class="panel">
+                    <h2>📅 Multi-Company Calendar Dashboard</h2>
+                    <div class="panel-body">
+                        <div class="multi-calendar-header">
+                            <div class="calendar-controls">
+                                <button id="mc-prev-month" class="nav-btn">‹ Previous</button>
+                                <h3 id="mc-month-title">September 2025</h3>
+                                <button id="mc-next-month" class="nav-btn">Next ›</button>
+                            </div>
+                            <div class="company-filters">
+                                <div class="filter-title">Show Companies:</div>
+                                <label class="company-filter">
+                                    <input type="checkbox" id="filter-C1" checked />
+                                    <span class="filter-color" style="background: #22c55e"></span>
+                                    Quick Fix Plumbing
+                                </label>
+                                <label class="company-filter">
+                                    <input type="checkbox" id="filter-C2" checked />
+                                    <span class="filter-color" style="background: #3b82f6"></span>
+                                    Professional Drain
+                                </label>
+                                <label class="company-filter">
+                                    <input type="checkbox" id="filter-C3" checked />
+                                    <span class="filter-color" style="background: #f59e0b"></span>
+                                    Emergency 24/7
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="multi-calendar-grid">
+                            <div class="multi-calendar-container">
+                                <div class="multi-calendar" id="multi-calendar"></div>
+                            </div>
+
+                            <div class="day-details-panel">
+                                <div class="day-details-header">
+                                    <h4 id="selected-day-title">Select a day</h4>
+                                    <div id="selected-day-summary" class="day-summary"></div>
+                                </div>
+                                <div id="day-appointments" class="appointments-list">
+                                    <div class="no-selection">
+                                        Click on a calendar day to see appointments for all
+                                        companies
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

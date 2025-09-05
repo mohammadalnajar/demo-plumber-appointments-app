@@ -722,6 +722,7 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName,
     renderDay();
     renderMonth();
     renderSidebarMonth();
+    refreshMultiCalendarIfActive();
     saveState();
 
     const subj = `Your appointment is temporarily reserved – please confirm`;
@@ -768,6 +769,7 @@ function createFinalAppointment(
     renderDay();
     renderMonth();
     renderSidebarMonth();
+    refreshMultiCalendarIfActive();
     saveState();
 
     const subj = `Your appointment is confirmed`;
@@ -789,6 +791,7 @@ function confirmAppointment(apptId) {
     renderDay();
     renderMonth();
     renderSidebarMonth();
+    refreshMultiCalendarIfActive();
     renderMail();
     saveState();
 }
@@ -802,6 +805,7 @@ function rejectAppointment(apptId) {
     renderDay();
     renderMonth();
     renderSidebarMonth();
+    refreshMultiCalendarIfActive();
     renderMail();
     saveState();
 }
@@ -1468,6 +1472,7 @@ function onResetDay() {
     renderDay();
     renderMonth();
     renderSidebarMonth();
+    refreshMultiCalendarIfActive();
     saveState();
 }
 
@@ -1478,13 +1483,326 @@ function clearAllData() {
     }
 }
 
+// --- Multi-Company Calendar Dashboard ---
+const multiCalendarState = {
+    cursor: new Date(),
+    selectedDate: null,
+    visibleCompanies: ['C1', 'C2', 'C3']
+};
+
+function renderMultiCompanyCalendar() {
+    const container = document.getElementById('multi-calendar');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const d = new Date(
+        multiCalendarState.cursor.getFullYear(),
+        multiCalendarState.cursor.getMonth(),
+        1
+    );
+    const year = d.getFullYear();
+    const month = d.getMonth();
+
+    // Update month title
+    const titleEl = document.getElementById('mc-month-title');
+    if (titleEl) {
+        titleEl.textContent = d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+    }
+
+    // Create header
+    const header = document.createElement('div');
+    header.className = 'calendar-header';
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((day) => {
+        const dow = document.createElement('div');
+        dow.className = 'dow';
+        dow.textContent = day;
+        header.appendChild(dow);
+    });
+
+    // Create body
+    const body = document.createElement('div');
+    body.className = 'calendar-body';
+
+    const firstDow = (d.getDay() + 6) % 7; // Monday = 0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Previous month trailing days
+    for (let i = 0; i < firstDow; i++) {
+        const prevDate = new Date(year, month, i - firstDow + 1);
+        const cell = createMultiCalendarDay(prevDate, true);
+        body.appendChild(cell);
+    }
+
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+        const date = new Date(year, month, i);
+        const cell = createMultiCalendarDay(date, false);
+        body.appendChild(cell);
+    }
+
+    // Next month leading days
+    const totalCells = firstDow + daysInMonth;
+    const trailing = (7 - (totalCells % 7)) % 7;
+    for (let i = 1; i <= trailing; i++) {
+        const nextDate = new Date(year, month + 1, i);
+        const cell = createMultiCalendarDay(nextDate, true);
+        body.appendChild(cell);
+    }
+
+    container.appendChild(header);
+    container.appendChild(body);
+}
+
+function createMultiCalendarDay(date, isOut) {
+    const dateKey = formatDateKey(date);
+    const cell = document.createElement('div');
+    cell.className = 'calendar-day' + (isOut ? ' out' : '');
+
+    if (
+        multiCalendarState.selectedDate &&
+        formatDateKey(multiCalendarState.selectedDate) === dateKey
+    ) {
+        cell.classList.add('selected');
+    }
+
+    const dayNumber = document.createElement('div');
+    dayNumber.className = 'day-number';
+    dayNumber.textContent = date.getDate();
+
+    const appointmentsContainer = document.createElement('div');
+    appointmentsContainer.className = 'day-appointments';
+
+    // Get appointments for this day across all visible companies
+    const dayAppointments = getDayAppointments(dateKey);
+    let displayedCount = 0;
+    const maxDisplay = 3;
+
+    dayAppointments.forEach((appt) => {
+        if (displayedCount >= maxDisplay) return;
+        if (!multiCalendarState.visibleCompanies.includes(appt.companyId)) return;
+
+        const indicator = document.createElement('div');
+        indicator.className = `appointment-indicator ${appt.status.toLowerCase()}`;
+
+        const company = COMPANIES.find((c) => c.id === appt.companyId);
+        const startTime = minutesToHHMM(WORK_START * 60 + appt.startIdx * SLOT_MIN);
+
+        indicator.textContent = `${startTime} ${company ? company.name.split(' ')[0] : ''}`;
+        indicator.title = `${startTime} - ${appt.customerName || 'Unknown'} (${
+            company ? company.name : 'Unknown Company'
+        })`;
+
+        appointmentsContainer.appendChild(indicator);
+        displayedCount++;
+    });
+
+    // Show overflow indicator
+    const remainingCount =
+        dayAppointments.filter((appt) =>
+            multiCalendarState.visibleCompanies.includes(appt.companyId)
+        ).length - maxDisplay;
+
+    if (remainingCount > 0) {
+        const overflow = document.createElement('div');
+        overflow.className = 'appointment-indicator';
+        overflow.textContent = `+${remainingCount} more`;
+        overflow.style.fontSize = '9px';
+        overflow.style.opacity = '0.7';
+        appointmentsContainer.appendChild(overflow);
+    }
+
+    cell.appendChild(dayNumber);
+    cell.appendChild(appointmentsContainer);
+
+    cell.onclick = () => {
+        multiCalendarState.selectedDate = new Date(date);
+        renderMultiCompanyCalendar();
+        renderDayDetails(dateKey);
+    };
+
+    return cell;
+}
+
+function getDayAppointments(dateKey) {
+    const appointments = [];
+
+    // Get appointments from the appointments object
+    for (const apptId in state.appts) {
+        const appt = state.appts[apptId];
+        if (appt.dateKey === dateKey) {
+            appointments.push(appt);
+        }
+    }
+
+    // Get appointments from requests with holds
+    state.requests.forEach((req) => {
+        if (req.hold && req.hold.dateKey === dateKey) {
+            appointments.push({
+                companyId: req.hold.companyId,
+                dateKey: req.hold.dateKey,
+                startIdx: req.hold.startIdx,
+                endIdx: req.hold.endIdx,
+                status: 'TEMP',
+                customerName: req.customer?.name || 'Unknown',
+                email: req.customer?.email || '',
+                serviceName: req.serviceName || 'Unknown Service'
+            });
+        }
+    });
+
+    // Sort by time
+    appointments.sort((a, b) => a.startIdx - b.startIdx);
+
+    return appointments;
+}
+
+function renderDayDetails(dateKey) {
+    const titleEl = document.getElementById('selected-day-title');
+    const summaryEl = document.getElementById('selected-day-summary');
+    const appointmentsEl = document.getElementById('day-appointments');
+
+    if (!titleEl || !summaryEl || !appointmentsEl) return;
+
+    const date = parseDateKey(dateKey);
+    const dayName = date.toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    titleEl.textContent = dayName;
+
+    const appointments = getDayAppointments(dateKey);
+    const visibleAppointments = appointments.filter((appt) =>
+        multiCalendarState.visibleCompanies.includes(appt.companyId)
+    );
+
+    summaryEl.textContent = `${visibleAppointments.length} appointment${
+        visibleAppointments.length !== 1 ? 's' : ''
+    }`;
+
+    appointmentsEl.innerHTML = '';
+
+    if (visibleAppointments.length === 0) {
+        const noAppts = document.createElement('div');
+        noAppts.className = 'no-selection';
+        noAppts.textContent = 'No appointments for this day';
+        appointmentsEl.appendChild(noAppts);
+        return;
+    }
+
+    // Group by company
+    const companiesWithAppts = {};
+    COMPANIES.forEach((company) => {
+        if (multiCalendarState.visibleCompanies.includes(company.id)) {
+            companiesWithAppts[company.id] = {
+                company,
+                appointments: visibleAppointments.filter((appt) => appt.companyId === company.id)
+            };
+        }
+    });
+
+    Object.values(companiesWithAppts).forEach(({ company, appointments: companyAppts }) => {
+        const companySection = document.createElement('div');
+        companySection.className = `company-appointments company-${company.id}`;
+
+        const header = document.createElement('h5');
+        const icon = document.createElement('span');
+        icon.className = 'company-icon';
+        header.appendChild(icon);
+        header.appendChild(document.createTextNode(company.name));
+        companySection.appendChild(header);
+
+        if (companyAppts.length === 0) {
+            const noAppts = document.createElement('div');
+            noAppts.className = 'no-appointments';
+            noAppts.textContent = 'No appointments';
+            companySection.appendChild(noAppts);
+        } else {
+            companyAppts.forEach((appt) => {
+                const apptEl = document.createElement('div');
+                apptEl.className = 'appointment-item';
+
+                const time = document.createElement('div');
+                time.className = 'appointment-time';
+                const startTime = minutesToHHMM(WORK_START * 60 + appt.startIdx * SLOT_MIN);
+                const endTime = minutesToHHMM(WORK_START * 60 + appt.endIdx * SLOT_MIN);
+                time.textContent = `${startTime} - ${endTime}`;
+
+                const customer = document.createElement('div');
+                customer.className = 'appointment-customer';
+                customer.textContent = appt.customerName || 'Unknown Customer';
+
+                const status = document.createElement('span');
+                status.className = `appointment-status ${appt.status.toLowerCase()}`;
+                status.textContent = appt.status === 'CONFIRMED' ? 'Confirmed' : 'Temporary Hold';
+
+                apptEl.appendChild(time);
+                apptEl.appendChild(customer);
+                if (appt.serviceName) {
+                    const service = document.createElement('div');
+                    service.style.fontSize = '11px';
+                    service.style.color = 'var(--sub)';
+                    service.textContent = appt.serviceName;
+                    apptEl.appendChild(service);
+                }
+                apptEl.appendChild(status);
+
+                companySection.appendChild(apptEl);
+            });
+        }
+
+        appointmentsEl.appendChild(companySection);
+    });
+}
+
+function toggleCompanyFilter(companyId) {
+    const index = multiCalendarState.visibleCompanies.indexOf(companyId);
+    if (index > -1) {
+        multiCalendarState.visibleCompanies.splice(index, 1);
+    } else {
+        multiCalendarState.visibleCompanies.push(companyId);
+    }
+
+    renderMultiCompanyCalendar();
+    if (multiCalendarState.selectedDate) {
+        renderDayDetails(formatDateKey(multiCalendarState.selectedDate));
+    }
+}
+
+function refreshMultiCalendarIfActive() {
+    if (state.currentPage === 'multi-calendar') {
+        renderMultiCompanyCalendar();
+        if (multiCalendarState.selectedDate) {
+            renderDayDetails(formatDateKey(multiCalendarState.selectedDate));
+        }
+    }
+}
+
 function switchPage(p) {
     state.currentPage = p;
     saveState();
     document.getElementById('nav-admin').classList.toggle('active', p === 'admin');
     document.getElementById('nav-client').classList.toggle('active', p === 'client');
+    document
+        .getElementById('nav-multi-calendar')
+        .classList.toggle('active', p === 'multi-calendar');
     document.getElementById('page-admin').style.display = p === 'admin' ? 'block' : 'none';
     document.getElementById('page-client').style.display = p === 'client' ? 'block' : 'none';
+    document.getElementById('page-multi-calendar').style.display =
+        p === 'multi-calendar' ? 'block' : 'none';
+
+    // Initialize multi-company calendar if switching to it
+    if (p === 'multi-calendar') {
+        multiCalendarState.cursor = new Date(state.monthCursor);
+        renderMultiCompanyCalendar();
+        // Clear day details
+        const appointmentsEl = document.getElementById('day-appointments');
+        if (appointmentsEl) {
+            appointmentsEl.innerHTML =
+                '<div class="no-selection">Click on a calendar day to see appointments for all companies</div>';
+        }
+    }
 
     // Close sidebar on mobile when switching pages
     if (window.innerWidth <= 900) {
@@ -1786,8 +2104,33 @@ function init() {
 
     document.getElementById('nav-admin').onclick = () => switchPage('admin');
     document.getElementById('nav-client').onclick = () => switchPage('client');
+    document.getElementById('nav-multi-calendar').onclick = () => switchPage('multi-calendar');
     const btnClear = document.getElementById('btnClear');
     if (btnClear) btnClear.onclick = clearAllData;
+
+    // Multi-company calendar controls
+    const mcPrevBtn = document.getElementById('mc-prev-month');
+    const mcNextBtn = document.getElementById('mc-next-month');
+    if (mcPrevBtn) {
+        mcPrevBtn.onclick = () => {
+            multiCalendarState.cursor.setMonth(multiCalendarState.cursor.getMonth() - 1);
+            renderMultiCompanyCalendar();
+        };
+    }
+    if (mcNextBtn) {
+        mcNextBtn.onclick = () => {
+            multiCalendarState.cursor.setMonth(multiCalendarState.cursor.getMonth() + 1);
+            renderMultiCompanyCalendar();
+        };
+    }
+
+    // Company filter checkboxes
+    ['C1', 'C2', 'C3'].forEach((companyId) => {
+        const checkbox = document.getElementById(`filter-${companyId}`);
+        if (checkbox) {
+            checkbox.addEventListener('change', () => toggleCompanyFilter(companyId));
+        }
+    });
 
     // Sidebar toggle functionality
     const sidebarToggle = document.getElementById('sidebar-toggle');
