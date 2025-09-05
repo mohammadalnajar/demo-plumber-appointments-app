@@ -259,10 +259,17 @@ body {
 }
 
 .controls {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 10px;
-    flex-wrap: wrap;
     margin: 10px 0;
+}
+.controls label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--sub);
 }
 .controls select,
 .controls input,
@@ -275,6 +282,7 @@ body {
 }
 .controls button {
     cursor: pointer;
+    grid-column: span 2;
 }
 
 /* Mail simulator */
@@ -316,6 +324,21 @@ body {
 }
 .btn.reject {
     background: rgba(239, 68, 68, 0.18);
+}
+
+/* Action buttons in slots */
+.action-btn {
+    background: var(--muted);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    margin: 0 1px;
+}
+.action-btn:hover {
+    background: var(--blue);
 }
 
 .footer {

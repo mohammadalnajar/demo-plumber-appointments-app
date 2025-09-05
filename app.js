@@ -248,37 +248,84 @@ function renderDay() {
     const total = slots.length;
 
     for (let i = 0; i < total; i++) {
-        const row = document.createElement('div');
-        row.className = 'trow';
-        const label = document.createElement('div');
-        label.className = 'time';
-        label.textContent = minutesToHHMM(startMin + i * SLOT_MIN);
-        const box = document.createElement('div');
-        box.className = 'slot ' + slots[i];
-        box.textContent = slots[i];
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'trow';
 
-        // Set appropriate tooltip based on slot status
-        if (slots[i] === 'FREE') {
-            box.title = 'Free. Use controls/client request to hold.';
-        } else if (slots[i] === 'TEMP') {
-            box.title = 'Click to view appointment details';
-        } else if (slots[i] === 'BOOKED') {
-            box.title = 'Click to view booking details';
-        }
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'time';
+        const slotMin = startMin + i * SLOT_MIN;
+        timeDiv.textContent = minutesToHHMM(slotMin);
 
-        if (i === 0) {
-            box.title = 'FIRST SLOT (08:00) - ' + box.title;
-        }
+        const slotDiv = document.createElement('div');
+        slotDiv.className = `slot ${slots[i]}`;
 
-        box.onclick = () => {
-            if (slots[i] === 'TEMP' || slots[i] === 'BOOKED') {
-                // Show popup with appointment/client details
-                showAppointmentPopup(dateKey, i, slots[i]);
+        // Find appointment info for this slot
+        const apptInfo = findAppointmentInfo(dateKey, i);
+        let displayText = slots[i];
+
+        if (slots[i] === 'BOOKED' || slots[i] === 'TEMP') {
+            if (apptInfo && apptInfo.type === 'appointment') {
+                const customerName = apptInfo.data.customerName || 'Unknown';
+                const email = apptInfo.data.email || '';
+                displayText = `${slots[i]} - ${customerName}`;
+
+                // Add action buttons for booked/temp slots
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'slot-actions';
+                actionsDiv.style.cssText = 'display: flex; gap: 4px; margin-left: auto;';
+
+                // WhatsApp button
+                const whatsappBtn = document.createElement('button');
+                whatsappBtn.innerHTML = '📱';
+                whatsappBtn.title = 'WhatsApp';
+                whatsappBtn.className = 'action-btn';
+                whatsappBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const phone = prompt(`Enter phone number for ${customerName}:`);
+                    if (phone) {
+                        const message = encodeURIComponent(
+                            `Hi ${customerName}, regarding your appointment on ${dateKey} at ${minutesToHHMM(
+                                slotMin
+                            )}`
+                        );
+                        window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+                    }
+                };
+
+                // Email button
+                const emailBtn = document.createElement('button');
+                emailBtn.innerHTML = '📧';
+                emailBtn.title = 'Email';
+                emailBtn.className = 'action-btn';
+                emailBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const subject = encodeURIComponent(`Appointment Reminder - ${dateKey}`);
+                    const body = encodeURIComponent(`Hi ${customerName},
+
+This is a reminder about your appointment on ${dateKey} at ${minutesToHHMM(slotMin)}.
+
+Best regards,
+Plumber Service`);
+                    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+                };
+
+                actionsDiv.appendChild(whatsappBtn);
+                actionsDiv.appendChild(emailBtn);
+
+                slotDiv.innerHTML = displayText;
+                slotDiv.appendChild(actionsDiv);
+                slotDiv.style.cssText =
+                    'display: flex; align-items: center; justify-content: space-between;';
+            } else {
+                slotDiv.textContent = displayText;
             }
-            // Clicking FREE does nothing to avoid creating detail-less holds
-        };
-        row.append(label, box);
-        container.appendChild(row);
+        } else {
+            slotDiv.textContent = displayText;
+        }
+
+        slotDiv.onclick = () => showAppointmentPopup(dateKey, i, slots[i]);
+        rowDiv.append(timeDiv, slotDiv);
+        container.appendChild(rowDiv);
     }
 }
 
@@ -360,6 +407,8 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         const appt = info.data;
         const startTime = minutesToHHMM(WORK_START * 60 + appt.startIdx * SLOT_MIN);
         const endTime = minutesToHHMM(WORK_START * 60 + appt.endIdx * SLOT_MIN);
+        const customerName = appt.customerName || (appt.client ? appt.client.name : 'Unknown');
+        const email = appt.email || (appt.client ? appt.client.email : 'No email');
 
         title = `Appointment #${info.apptId}`;
         content = `
@@ -367,14 +416,17 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         <span class="popup-label">Status:</span>
         <span class="popup-value">${appt.status}</span>
       </div>
-      ${
-          appt.client
-              ? `<div class=\"popup-row\"><span class=\"popup-label\">Client:</span><span class=\"popup-value\">${appt.client.name} (${appt.client.email})</span></div>`
-              : ''
-      }
+      <div class="popup-row">
+        <span class="popup-label">Customer:</span>
+        <span class="popup-value">${customerName}</span>
+      </div>
+      <div class="popup-row">
+        <span class="popup-label">Email:</span>
+        <span class="popup-value">${email}</span>
+      </div>
       ${
           appt.serviceName
-              ? `<div class=\"popup-row\"><span class=\"popup-label\">Service:</span><span class=\"popup-value\">${appt.serviceName}</span></div>`
+              ? `<div class="popup-row"><span class="popup-label">Service:</span><span class="popup-value">${appt.serviceName}</span></div>`
               : ''
       }
       <div class="popup-row">
@@ -388,6 +440,20 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
       <div class="popup-row">
         <span class="popup-label">Duration:</span>
         <span class="popup-value">${(appt.endIdx - appt.startIdx) * SLOT_MIN} minutes</span>
+      </div>
+      <div style="margin-top: 16px; display: flex; gap: 8px;">
+        <button class="btn" onclick="
+          const phone = prompt('Enter phone number for ${customerName}:');
+          if (phone) {
+            const message = encodeURIComponent('Hi ${customerName}, regarding your appointment on ${dateKey} at ${startTime}');
+            window.open('https://wa.me/' + phone + '?text=' + message, '_blank');
+          }
+        ">📱 WhatsApp</button>
+        <button class="btn" onclick="
+          const subject = encodeURIComponent('Appointment - ${dateKey}');
+          const body = encodeURIComponent('Hi ${customerName},\\n\\nRegarding your appointment on ${dateKey} at ${startTime}.\\n\\nBest regards,\\nPlumber Service');
+          window.open('mailto:${email}?subject=' + subject + '&body=' + body, '_blank');
+        ">📧 Email</button>
       </div>
     `;
     } else if (info?.type === 'request') {
@@ -426,6 +492,28 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         <span class="popup-value">${
             req.estimate != null ? '€' + req.estimate.toFixed(2) : 'Quotation'
         }</span>
+      </div>
+      <div style="margin-top: 16px; display: flex; gap: 8px;">
+        <button class="btn" onclick="
+          const phone = prompt('Enter phone number for ${req.customer.name}:');
+          if (phone) {
+            const message = encodeURIComponent('Hi ${
+                req.customer.name
+            }, regarding your service request for ${req.serviceName}');
+            window.open('https://wa.me/' + phone + '?text=' + message, '_blank');
+          }
+        ">📱 WhatsApp</button>
+        <button class="btn" onclick="
+          const subject = encodeURIComponent('Service Request - ${req.serviceName}');
+          const body = encodeURIComponent('Hi ${
+              req.customer.name
+          },\\n\\nRegarding your service request for ${
+            req.serviceName
+        }.\\n\\nBest regards,\\nPlumber Service');
+          window.open('mailto:${
+              req.customer.email
+          }?subject=' + subject + '&body=' + body, '_blank');
+        ">📧 Email</button>
       </div>
     `;
     } else {
@@ -538,28 +626,26 @@ function renderMail() {
 }
 
 // --- Appointment creation & transitions ---
-function createTempAppointment(dateKey, startHHMM, endHHMM, email) {
+function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName) {
     ensureDay(dateKey);
     const slots = state.schedule[dateKey];
     const startIdx = (hhmmToMinutes(startHHMM) - WORK_START * 60) / SLOT_MIN;
     const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
-    if (endIdx <= startIdx) {
-        alert('End time must be after start time.');
-        return null;
-    }
+    if (endIdx <= startIdx) return alert('Invalid time range');
     for (let i = startIdx; i < endIdx; i++) {
-        if (slots[i] !== 'FREE') {
-            alert('Selected range overlaps with non-free slots.');
-            return null;
-        }
+        if (slots[i] !== 'FREE') return alert('Time slot not available');
     }
     for (let i = startIdx; i < endIdx; i++) slots[i] = 'TEMP';
     const id = state.nextApptId++;
-    const appt = { dateKey, startIdx, endIdx, status: 'TEMP' };
-    if (email && email.includes('@')) {
-        const nameGuess = email.split('@')[0];
-        appt.client = { name: nameGuess, email };
-    }
+    const appt = {
+        dateKey,
+        startIdx,
+        endIdx,
+        status: 'TEMP',
+        email: email || 'client@example.com',
+        customerName: customerName || 'Unknown Client'
+    };
+    if (email && email.includes('@')) appt.email = email;
     state.appts[id] = appt;
     renderDay();
     renderMonth();
@@ -570,6 +656,39 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email) {
 <p><strong>Date:</strong> ${dateKey}<br/>
 <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
 <p>This booking is <em>temporary</em>. Please Approve or Reject below.</p>`;
+    pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
+    return id;
+}
+
+function createFinalAppointment(dateKey, startHHMM, endHHMM, email, customerName) {
+    ensureDay(dateKey);
+    const slots = state.schedule[dateKey];
+    const startIdx = (hhmmToMinutes(startHHMM) - WORK_START * 60) / SLOT_MIN;
+    const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
+    if (endIdx <= startIdx) return alert('Invalid time range');
+    for (let i = startIdx; i < endIdx; i++) {
+        if (slots[i] !== 'FREE') return alert('Time slot not available');
+    }
+    for (let i = startIdx; i < endIdx; i++) slots[i] = 'BOOKED';
+    const id = state.nextApptId++;
+    const appt = {
+        dateKey,
+        startIdx,
+        endIdx,
+        status: 'CONFIRMED',
+        email: email || 'client@example.com',
+        customerName: customerName || 'Unknown Client'
+    };
+    state.appts[id] = appt;
+    renderDay();
+    renderMonth();
+    saveState();
+
+    const subj = `Your appointment is confirmed`;
+    const body = `<p>Your appointment has been confirmed!</p>
+<p><strong>Date:</strong> ${dateKey}<br/>
+<strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
+<p>We look forward to seeing you.</p>`;
     pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
     return id;
 }
@@ -795,8 +914,8 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email) {
     const startHHMM = minutesToHHMM(WORK_START * 60 + startIdx * SLOT_MIN);
     const endHHMM = minutesToHHMM(WORK_START * 60 + endIdx * SLOT_MIN);
     const id = state.nextApptId++;
-    state.appts[id] = { dateKey, startIdx, endIdx, status: 'TEMP' };
-    // Link to matching request if exists
+
+    // Find matching request to get customer info
     const match = state.requests.find(
         (r) =>
             r.hold &&
@@ -804,17 +923,33 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email) {
             r.hold.startIdx === startIdx &&
             r.hold.endIdx === endIdx
     );
+
+    const appt = {
+        dateKey,
+        startIdx,
+        endIdx,
+        status: 'TEMP',
+        email: email || 'client@example.com'
+    };
+
     if (match) {
-        state.appts[id].client = match.customer;
-        state.appts[id].serviceName = match.serviceName;
+        appt.client = match.customer;
+        appt.customerName = match.customer.name;
+        appt.email = match.customer.email;
+        appt.serviceName = match.serviceName;
         match.apptId = id;
+    } else {
+        appt.customerName = 'Unknown Client';
     }
+
+    state.appts[id] = appt;
+
     const subj = `Your appointment is temporarily reserved – please confirm`;
     const body = `<p>Thanks for your request.</p>
 <p><strong>Date:</strong> ${dateKey}<br/>
 <strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
 <p>This booking is <em>temporary</em>. Please Approve or Reject below.</p>`;
-    pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
+    pushEmail({ subj, body, apptId: id, to: appt.email });
     renderDay();
     renderMonth();
     saveState();
@@ -1093,8 +1228,19 @@ function onHoldClick() {
     const start = document.getElementById('startTime').value;
     const end = document.getElementById('endTime').value;
     const email = document.getElementById('clientEmail').value;
+    const customerName = document.getElementById('customerName').value;
     ensureDay(dateKey);
-    createTempAppointment(dateKey, start, end, email);
+    createTempAppointment(dateKey, start, end, email, customerName);
+}
+
+function onBookFinalClick() {
+    const dateKey = document.getElementById('datePicker').value;
+    const start = document.getElementById('startTime').value;
+    const end = document.getElementById('endTime').value;
+    const email = document.getElementById('clientEmail').value;
+    const customerName = document.getElementById('customerName').value;
+    ensureDay(dateKey);
+    createFinalAppointment(dateKey, start, end, email, customerName);
 }
 
 function onResetDay() {
@@ -1240,6 +1386,8 @@ function init() {
     }
     const btnHold = document.getElementById('btnHold');
     if (btnHold) btnHold.onclick = onHoldClick;
+    const btnBookFinal = document.getElementById('btnBookFinal');
+    if (btnBookFinal) btnBookFinal.onclick = onBookFinalClick;
     const btnReset = document.getElementById('btnResetDay');
     if (btnReset) btnReset.onclick = onResetDay;
 
