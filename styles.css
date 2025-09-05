@@ -364,12 +364,12 @@ body {
     background: var(--card);
     border: 2px solid var(--border);
     color: var(--text);
-    padding: 10px 14px;
+    padding: 10px 12px;
     border-radius: 12px;
     font-size: 14px;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    min-height: 44px;
+    transition: all 0.18s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    min-height: 40px;
 }
 .controls select:focus,
 .controls input:focus {
@@ -392,11 +392,11 @@ body {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    transition: all 0.2s ease;
+    box-shadow: 0 3px 10px rgba(59, 130, 246, 0.25);
+    transition: all 0.18s ease;
     padding: 10px 14px;
     font-size: 13px;
-    min-height: 44px;
+    min-height: 40px;
 }
 .controls button:hover {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -410,9 +410,9 @@ body {
 .controls button#btnResetDay {
     background: linear-gradient(135deg, var(--gray), #6b7280);
     grid-column: span 1;
-    padding: 10px 14px;
+    padding: 9px 12px;
     font-size: 13px;
-    min-height: 44px;
+    min-height: 36px;
 }
 .controls button#btnResetDay:hover {
     background: linear-gradient(135deg, #6b7280, #4b5563);
