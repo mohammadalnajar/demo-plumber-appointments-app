@@ -1480,6 +1480,14 @@ function switchPage(p) {
     document.getElementById('nav-client').classList.toggle('active', p === 'client');
     document.getElementById('page-admin').style.display = p === 'admin' ? 'block' : 'none';
     document.getElementById('page-client').style.display = p === 'client' ? 'block' : 'none';
+
+    // Close sidebar on mobile when switching pages
+    if (window.innerWidth <= 900) {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.classList.remove('open');
+        }
+    }
 }
 
 // --- Tiny Test Suite (console) ---
@@ -1638,6 +1646,27 @@ function init() {
     document.getElementById('nav-client').onclick = () => switchPage('client');
     const btnClear = document.getElementById('btnClear');
     if (btnClear) btnClear.onclick = clearAllData;
+
+    // Sidebar toggle functionality
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.onclick = () => {
+            sidebar.classList.toggle('open');
+        };
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (
+                window.innerWidth <= 900 &&
+                !sidebar.contains(e.target) &&
+                !sidebarToggle.contains(e.target) &&
+                sidebar.classList.contains('open')
+            ) {
+                sidebar.classList.remove('open');
+            }
+        });
+    }
 
     const sSel = document.getElementById('c_service');
     if (sSel) {
