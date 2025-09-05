@@ -703,25 +703,71 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
       </div>
     `;
     } else {
-        title = `${slotStatus} Slot`;
-        content = `
-      <div class="popup-row">
-        <span class="popup-label">Date:</span>
-        <span class="popup-value">${dateKey}</span>
-      </div>
-      <div class="popup-row">
-        <span class="popup-label">Time:</span>
-        <span class="popup-value">${minutesToHHMM(WORK_START * 60 + slotIndex * SLOT_MIN)}</span>
-      </div>
-      <div class="popup-row">
-        <span class="popup-label">Status:</span>
-        <span class="popup-value">${slotStatus}</span>
-      </div>
-      <div class="popup-row">
-        <span class="popup-label">Info:</span>
-        <span class="popup-value">No appointment details found</span>
-      </div>
-    `;
+        // Handle FREE and UNAVAILABLE slots with toggle functionality
+        if (slotStatus === 'FREE' || slotStatus === 'UNAVAILABLE') {
+            const companyName =
+                COMPANIES.find((c) => c.id === state.selectedCompanyId)?.name || 'Unknown';
+            const slotTime = minutesToHHMM(WORK_START * 60 + slotIndex * SLOT_MIN);
+            const nextSlotTime = minutesToHHMM(WORK_START * 60 + (slotIndex + 1) * SLOT_MIN);
+            const toggleTo = slotStatus === 'FREE' ? 'UNAVAILABLE' : 'FREE';
+            const toggleLabel = toggleTo === 'FREE' ? 'Available' : 'Unavailable';
+            const actionEmoji = toggleTo === 'FREE' ? '✅' : '🚫';
+
+            title = `${slotStatus} Slot - Toggle Status`;
+            content = `
+              <div class="popup-row">
+                <span class="popup-label">Company:</span>
+                <span class="popup-value">${companyName}</span>
+              </div>
+              <div class="popup-row">
+                <span class="popup-label">Date:</span>
+                <span class="popup-value">${dateKey}</span>
+              </div>
+              <div class="popup-row">
+                <span class="popup-label">Time:</span>
+                <span class="popup-value">${slotTime} - ${nextSlotTime}</span>
+              </div>
+              <div class="popup-row">
+                <span class="popup-label">Current Status:</span>
+                <span class="popup-value" style="color: ${
+                    slotStatus === 'FREE' ? 'var(--green)' : 'var(--yellow)'
+                };">${slotStatus}</span>
+              </div>
+              <div style="margin-top: 16px; padding: 16px; background: var(--muted); border-radius: 8px;">
+                <p style="margin: 0 0 12px 0; color: var(--text); font-weight: 500;">
+                  ${actionEmoji} Change this slot to <strong>${toggleLabel}</strong>?
+                </p>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                  <button class="btn primary" onclick="toggleSlotStatus('${dateKey}', ${slotIndex}, '${toggleTo}', this)">
+                    ${actionEmoji} Set as ${toggleLabel}
+                  </button>
+                  <button class="btn secondary popup-close">Cancel</button>
+                </div>
+              </div>
+            `;
+        } else {
+            title = `${slotStatus} Slot`;
+            content = `
+              <div class="popup-row">
+                <span class="popup-label">Date:</span>
+                <span class="popup-value">${dateKey}</span>
+              </div>
+              <div class="popup-row">
+                <span class="popup-label">Time:</span>
+                <span class="popup-value">${minutesToHHMM(
+                    WORK_START * 60 + slotIndex * SLOT_MIN
+                )}</span>
+              </div>
+              <div class="popup-row">
+                <span class="popup-label">Status:</span>
+                <span class="popup-value">${slotStatus}</span>
+              </div>
+              <div class="popup-row">
+                <span class="popup-label">Info:</span>
+                <span class="popup-value">No appointment details found</span>
+              </div>
+            `;
+        }
     }
 
     const overlay = document.createElement('div');
@@ -749,6 +795,135 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
     const escapeHandler = (e) => {
         if (e.key === 'Escape') {
             document.body.removeChild(overlay);
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+}
+
+// Toggle slot status between FREE and UNAVAILABLE
+function toggleSlotStatus(dateKey, slotIndex, newStatus, buttonElement) {
+    const companyId = state.selectedCompanyId;
+    const companyName = COMPANIES.find((c) => c.id === companyId)?.name || 'Unknown';
+    const slotTime = minutesToHHMM(WORK_START * 60 + slotIndex * SLOT_MIN);
+    const nextSlotTime = minutesToHHMM(WORK_START * 60 + (slotIndex + 1) * SLOT_MIN);
+
+    // Show confirmation popup
+    const confirmOverlay = document.createElement('div');
+    confirmOverlay.className = 'popup-overlay';
+
+    const statusColor = newStatus === 'FREE' ? 'var(--green)' : 'var(--yellow)';
+    const statusIcon = newStatus === 'FREE' ? '✅' : '🚫';
+    const actionDescription =
+        newStatus === 'FREE'
+            ? 'This slot will become available for bookings.'
+            : 'This slot will be blocked from bookings.';
+
+    confirmOverlay.innerHTML = `
+        <div class="popup confirmation-popup">
+            <button class="popup-close">×</button>
+            <h3>🔄 Confirm Status Change</h3>
+            <div class="popup-info">
+                <div class="confirmation-details">
+                    <div class="popup-row">
+                        <span class="popup-label">Company:</span>
+                        <span class="popup-value">${companyName}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Date:</span>
+                        <span class="popup-value">${dateKey}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Time:</span>
+                        <span class="popup-value">${slotTime} - ${nextSlotTime}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">New Status:</span>
+                        <span class="popup-value" style="color: ${statusColor}; font-weight: 600;">
+                            ${statusIcon} ${newStatus}
+                        </span>
+                    </div>
+                </div>
+                <div class="confirmation-message">
+                    <p>${actionDescription}</p>
+                </div>
+                <div class="popup-actions">
+                    <button class="btn primary" id="confirmToggle">
+                        ${statusIcon} Confirm Change
+                    </button>
+                    <button class="btn secondary popup-close">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(confirmOverlay);
+
+    // Handle confirmation
+    confirmOverlay.querySelector('#confirmToggle').onclick = () => {
+        // Apply the status change
+        ensureDay(dateKey, companyId);
+        const slots = state.schedule[companyId][dateKey];
+        slots[slotIndex] = newStatus;
+
+        // Re-render everything
+        renderDay();
+        renderMonth();
+        renderSidebarMonth();
+        refreshMultiCalendarIfActive();
+        saveState();
+
+        // Close both popups
+        confirmOverlay.remove();
+        const originalPopup = document.querySelector('.popup-overlay');
+        if (originalPopup) {
+            originalPopup.remove();
+        }
+
+        // Show success message
+        const successMessage =
+            newStatus === 'FREE'
+                ? 'Slot is now available for bookings'
+                : 'Slot is now unavailable for bookings';
+
+        // Create temporary success notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, var(--blue), #2563eb);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            z-index: 10000;
+            font-weight: 500;
+            font-size: 14px;
+        `;
+        notification.textContent = `${statusIcon} ${successMessage}`;
+        document.body.appendChild(notification);
+
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 3000);
+    };
+
+    // Close handlers
+    confirmOverlay.querySelectorAll('.popup-close').forEach((btn) => {
+        btn.onclick = () => confirmOverlay.remove();
+    });
+    confirmOverlay.onclick = (e) => {
+        if (e.target === confirmOverlay) confirmOverlay.remove();
+    };
+
+    // Close on escape key
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            confirmOverlay.remove();
             document.removeEventListener('keydown', escapeHandler);
         }
     };

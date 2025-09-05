@@ -1506,3 +1506,32 @@ body {
     font-weight: bold;
     margin-right: 6px;
 }
+
+/* Confirmation Popup Styles */
+.confirmation-popup {
+    min-width: 450px;
+    max-width: 500px;
+}
+
+.confirmation-details {
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.confirmation-message {
+    padding: 12px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.confirmation-message p {
+    margin: 0;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.4;
+}
