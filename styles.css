@@ -975,6 +975,23 @@ body {
     color: #fecaca;
 }
 
+.UNAVAILABLE {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: #fed7aa;
+    position: relative;
+}
+
+.UNAVAILABLE::after {
+    content: '🚫';
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 12px;
+    opacity: 0.7;
+}
+
 .controls {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1351,4 +1368,141 @@ body {
 }
 .popup-value {
     color: var(--text);
+}
+
+/* Weekly Availability Popup Styles */
+.weekly-availability-popup {
+    min-width: 500px;
+    max-width: 600px;
+}
+
+.week-info {
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.week-info p {
+    margin: 4px 0;
+}
+
+.availability-options {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.option-title {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 14px;
+}
+
+.week-select {
+    background: var(--card);
+    border: 2px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.week-select:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.popup-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+.popup-actions .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+}
+
+.popup-actions .primary {
+    background: linear-gradient(135deg, var(--blue), #2563eb);
+    border-color: var(--blue);
+    color: white;
+}
+
+.popup-actions .secondary {
+    background: var(--card);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+/* Conflict Warning Styles */
+.conflict-popup {
+    min-width: 500px;
+    max-width: 700px;
+}
+
+.conflict-warning {
+    color: var(--text);
+}
+
+.conflict-warning p {
+    margin: 8px 0;
+}
+
+.conflicts-list {
+    background: var(--muted);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.conflict-day {
+    margin-bottom: 12px;
+}
+
+.conflict-day:last-child {
+    margin-bottom: 0;
+}
+
+.conflict-date {
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--border);
+}
+
+.conflict-slots {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    padding-left: 12px;
+}
+
+.conflict-slots li {
+    color: var(--sub);
+    padding: 2px 0;
+    font-size: 13px;
+}
+
+.conflict-slots li::before {
+    content: '• ';
+    color: var(--red);
+    font-weight: bold;
+    margin-right: 6px;
 }

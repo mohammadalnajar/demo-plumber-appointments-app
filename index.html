@@ -18,7 +18,7 @@
                 </div>
 
                 <!-- Combined Calendar Overview -->
-                <!-- <div class="sidebar-calendar">
+                <div class="sidebar-calendar">
                     <h3>All Companies Overview</h3>
                     <div class="sidebar-calendar-legend">
                         <div class="legend-item">
@@ -32,6 +32,10 @@
                         <div class="legend-item">
                             <div class="legend-color" style="background: var(--red)"></div>
                             <span>Booked</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--yellow)"></div>
+                            <span>Unavailable</span>
                         </div>
                     </div>
                     <div id="sidebar-month" class="sidebar-month"></div>
@@ -51,7 +55,7 @@
                             </div>
                         </div>
                     </div>
-                </div> -->
+                </div>
 
                 <p class="note" style="margin-top: 12px">
                     State persists in your browser via <strong>localStorage</strong>.
@@ -125,8 +129,14 @@
                                             ></span>
                                             Booked</span
                                         >
+                                        <span class="pill"
+                                            ><span
+                                                class="swatch"
+                                                style="background: var(--yellow)"
+                                            ></span>
+                                            Unavailable</span
+                                        >
                                     </div>
-
                                     <div class="controls">
                                         <label>
                                             Date:
@@ -162,6 +172,9 @@
                                             </button>
                                             <button id="btnBookFinal" class="primary">
                                                 Book final appointment
+                                            </button>
+                                            <button id="btnWeeklyAvailability" class="secondary">
+                                                📅 Weekly Availability
                                             </button>
                                             <button
                                                 id="btnResetDay"

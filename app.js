@@ -151,7 +151,7 @@ const state = {
     monthCursor: new Date(),
     selectedDate: new Date(),
     selectedCompanyId: 'C1', // Default to first company
-    schedule: {}, // companyId -> dateKey -> ['FREE'|'TEMP'|'BOOKED']
+    schedule: {}, // companyId -> dateKey -> ['FREE'|'TEMP'|'BOOKED'|'UNAVAILABLE']
     emails: [], // {id, subj, body, apptId, status, to}
     appts: {}, // apptId -> {companyId,dateKey,startIdx,endIdx,status,expiresAt}
     requests: [], // array of request objects (client → admin)
@@ -317,6 +317,9 @@ function dayCell(date, isOut) {
     const slots = state.schedule[state.selectedCompanyId][dateKey];
     const hasBooked = slots.includes('BOOKED');
     const hasTemp = slots.includes('TEMP');
+    const hasUnavailable = slots.includes('UNAVAILABLE');
+    const hasFree = slots.includes('FREE');
+
     if (hasBooked) {
         const el = document.createElement('div');
         el.className = 'dot';
@@ -329,7 +332,13 @@ function dayCell(date, isOut) {
         el.style.background = 'var(--gray)';
         dots.appendChild(el);
     }
-    if (!hasBooked && !hasTemp) {
+    if (hasUnavailable) {
+        const el = document.createElement('div');
+        el.className = 'dot';
+        el.style.background = 'var(--yellow)';
+        dots.appendChild(el);
+    }
+    if (hasFree && !hasBooked && !hasTemp && !hasUnavailable) {
         const el = document.createElement('div');
         el.className = 'dot';
         el.style.background = 'var(--green)';
@@ -824,7 +833,12 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName,
     const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
     if (endIdx <= startIdx) return alert('Invalid time range');
     for (let i = startIdx; i < endIdx; i++) {
-        if (slots[i] !== 'FREE') return alert('Time slot not available');
+        if (slots[i] !== 'FREE') {
+            if (slots[i] === 'UNAVAILABLE') {
+                return alert('Selected time slots are marked as unavailable');
+            }
+            return alert('Time slot not available');
+        }
     }
     for (let i = startIdx; i < endIdx; i++) slots[i] = 'TEMP';
     const id = state.nextApptId++;
@@ -881,7 +895,12 @@ function createFinalAppointment(
     const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
     if (endIdx <= startIdx) return alert('Invalid time range');
     for (let i = startIdx; i < endIdx; i++) {
-        if (slots[i] !== 'FREE') return alert('Time slot not available');
+        if (slots[i] !== 'FREE') {
+            if (slots[i] === 'UNAVAILABLE') {
+                return alert('Selected time slots are marked as unavailable');
+            }
+            return alert('Time slot not available');
+        }
     }
     for (let i = startIdx; i < endIdx; i++) slots[i] = 'BOOKED';
     const id = state.nextApptId++;
@@ -1734,6 +1753,275 @@ function clearAllData() {
     }
 }
 
+// --- Weekly Availability Management ---
+
+// Get the start of the week (Monday) for a given date
+function getWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    return new Date(d.setDate(diff));
+}
+
+// Get all dates in a week starting from Monday
+function getWeekDates(startDate) {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        dates.push(date);
+    }
+    return dates;
+}
+
+// Check if there are any TEMP or BOOKED slots in the given range
+function checkConflictingAppointments(dateKeys, companyId) {
+    const conflicts = [];
+
+    for (const dateKey of dateKeys) {
+        ensureDay(dateKey, companyId);
+        const slots = state.schedule[companyId][dateKey];
+
+        for (let i = 0; i < slots.length; i++) {
+            if (slots[i] === 'TEMP' || slots[i] === 'BOOKED') {
+                const startTime = minutesToHHMM(i * SLOT_MIN + WORK_START * 60);
+                const endTime = minutesToHHMM((i + 1) * SLOT_MIN + WORK_START * 60);
+                conflicts.push({
+                    dateKey,
+                    slotIndex: i,
+                    status: slots[i],
+                    time: `${startTime}-${endTime}`
+                });
+            }
+        }
+    }
+
+    return conflicts;
+}
+
+// Show conflicts popup
+function showConflictsPopup(conflicts, operation) {
+    const conflictsByDate = {};
+    conflicts.forEach((conflict) => {
+        if (!conflictsByDate[conflict.dateKey]) {
+            conflictsByDate[conflict.dateKey] = [];
+        }
+        conflictsByDate[conflict.dateKey].push(conflict);
+    });
+
+    let content = `<div class="conflict-warning">
+        <p><strong>Cannot ${operation} - Conflicting appointments found:</strong></p>
+        <div class="conflicts-list">`;
+
+    Object.keys(conflictsByDate).forEach((dateKey) => {
+        const date = parseDateKey(dateKey);
+        const dayName = date.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric'
+        });
+        content += `<div class="conflict-day">
+            <div class="conflict-date">${dayName}</div>
+            <ul class="conflict-slots">`;
+
+        conflictsByDate[dateKey].forEach((conflict) => {
+            const statusLabel = conflict.status === 'TEMP' ? 'Temporary Hold' : 'Booked';
+            content += `<li>${conflict.time} - ${statusLabel}</li>`;
+        });
+
+        content += `</ul></div>`;
+    });
+
+    content += `</div>
+        <p><strong>Please cancel or modify these appointments first, then try again.</strong></p>
+    </div>`;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+        <div class="popup conflict-popup">
+            <button class="popup-close">×</button>
+            <h3>⚠️ Scheduling Conflict</h3>
+            <div class="popup-info">
+                ${content}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close handlers
+    overlay.querySelector('.popup-close').onclick = () => overlay.remove();
+    overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+    };
+}
+
+// Set availability for multiple days
+function setAvailability(dateKeys, availability, companyId) {
+    const cId = companyId || state.selectedCompanyId;
+
+    // Check for conflicts first
+    if (availability === 'UNAVAILABLE') {
+        const conflicts = checkConflictingAppointments(dateKeys, cId);
+        if (conflicts.length > 0) {
+            showConflictsPopup(conflicts, 'set as unavailable');
+            return false;
+        }
+    }
+
+    // Apply the availability setting
+    dateKeys.forEach((dateKey) => {
+        ensureDay(dateKey, cId);
+        const slots = state.schedule[cId][dateKey];
+
+        for (let i = 0; i < slots.length; i++) {
+            if (availability === 'FREE') {
+                // Only change UNAVAILABLE slots to FREE, preserve TEMP/BOOKED
+                if (slots[i] === 'UNAVAILABLE') {
+                    slots[i] = 'FREE';
+                }
+            } else if (availability === 'UNAVAILABLE') {
+                // Only change FREE slots to UNAVAILABLE, preserve TEMP/BOOKED
+                if (slots[i] === 'FREE') {
+                    slots[i] = 'UNAVAILABLE';
+                }
+            }
+        }
+    });
+
+    // Re-render everything
+    renderDay();
+    renderMonth();
+    renderSidebarMonth();
+    refreshMultiCalendarIfActive();
+    saveState();
+
+    return true;
+}
+
+// Set weekly availability
+function setWeeklyAvailability(pattern, availability, companyId) {
+    const cId = companyId || state.selectedCompanyId;
+    const weekStart = getWeekStart(state.selectedDate);
+    const weekDates = getWeekDates(weekStart);
+
+    let targetDates = [];
+
+    switch (pattern) {
+        case 'all':
+            targetDates = weekDates;
+            break;
+        case 'odd':
+            targetDates = weekDates.filter((_, index) => index % 2 === 0); // Mon, Wed, Fri, Sun (0,2,4,6)
+            break;
+        case 'even':
+            targetDates = weekDates.filter((_, index) => index % 2 === 1); // Tue, Thu, Sat (1,3,5)
+            break;
+        case 'weekdays':
+            targetDates = weekDates.slice(0, 5); // Mon-Fri
+            break;
+        case 'weekend':
+            targetDates = weekDates.slice(5); // Sat-Sun
+            break;
+        default:
+            return false;
+    }
+
+    const targetDateKeys = targetDates.map(formatDateKey);
+    return setAvailability(targetDateKeys, availability, cId);
+}
+
+// Show weekly availability popup
+function showWeeklyAvailabilityPopup() {
+    const companyName = COMPANIES.find((c) => c.id === state.selectedCompanyId)?.name || 'Unknown';
+    const weekStart = getWeekStart(state.selectedDate);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const weekRange = `${weekStart.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+    })} - ${weekEnd.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    })}`;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'popup-overlay';
+    overlay.innerHTML = `
+        <div class="popup weekly-availability-popup">
+            <button class="popup-close">×</button>
+            <h3>📅 Set Weekly Availability</h3>
+            <div class="popup-info">
+                <div class="week-info">
+                    <p><strong>Company:</strong> ${companyName}</p>
+                    <p><strong>Week:</strong> ${weekRange}</p>
+                </div>
+                
+                <div class="availability-options">
+                    <div class="option-group">
+                        <label class="option-title">Pattern:</label>
+                        <select id="weekPattern" class="week-select">
+                            <option value="all">Entire Week (Mon-Sun)</option>
+                            <option value="weekdays">Weekdays Only (Mon-Fri)</option>
+                            <option value="weekend">Weekend Only (Sat-Sun)</option>
+                            <option value="odd">Odd Days (Mon, Wed, Fri, Sun)</option>
+                            <option value="even">Even Days (Tue, Thu, Sat)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="option-group">
+                        <label class="option-title">Set as:</label>
+                        <select id="weekAvailability" class="week-select">
+                            <option value="FREE">Available (Free)</option>
+                            <option value="UNAVAILABLE">Unavailable (Busy)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="popup-actions">
+                    <button id="applyWeeklyAvailability" class="btn primary">Apply Changes</button>
+                    <button class="btn secondary popup-close">Cancel</button>
+                </div>
+                
+                <div class="note">
+                    <strong>Note:</strong> This will only affect FREE or UNAVAILABLE slots. Existing TEMP/BOOKED appointments will not be changed.
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Apply button handler
+    overlay.querySelector('#applyWeeklyAvailability').onclick = () => {
+        const pattern = overlay.querySelector('#weekPattern').value;
+        const availability = overlay.querySelector('#weekAvailability').value;
+
+        const success = setWeeklyAvailability(pattern, availability, state.selectedCompanyId);
+        if (success) {
+            overlay.remove();
+
+            // Show success message
+            const patternLabel = overlay.querySelector('#weekPattern').selectedOptions[0].text;
+            const availabilityLabel = availability === 'FREE' ? 'Available' : 'Unavailable';
+            alert(
+                `Successfully set ${patternLabel.toLowerCase()} as ${availabilityLabel.toLowerCase()}.`
+            );
+        }
+    };
+
+    // Close handlers
+    overlay.querySelectorAll('.popup-close').forEach((btn) => {
+        btn.onclick = () => overlay.remove();
+    });
+    overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+    };
+}
+
 // --- Multi-Company Calendar Dashboard ---
 const multiCalendarState = {
     cursor: new Date(),
@@ -2352,6 +2640,8 @@ function init() {
     if (btnBookFinal) btnBookFinal.onclick = onBookFinalClick;
     const btnReset = document.getElementById('btnResetDay');
     if (btnReset) btnReset.onclick = onResetDay;
+    const btnWeeklyAvailability = document.getElementById('btnWeeklyAvailability');
+    if (btnWeeklyAvailability) btnWeeklyAvailability.onclick = showWeeklyAvailabilityPopup;
 
     document.getElementById('nav-admin').onclick = () => switchPage('admin');
     document.getElementById('nav-client').onclick = () => switchPage('client');
