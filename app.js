@@ -373,7 +373,8 @@ function renderDay() {
         const timeDiv = document.createElement('div');
         timeDiv.className = 'time';
         const slotMin = startMin + i * SLOT_MIN;
-        timeDiv.textContent = minutesToHHMM(slotMin);
+        const slotEndMin = slotMin + SLOT_MIN;
+        timeDiv.textContent = `${minutesToHHMM(slotMin)}-${minutesToHHMM(slotEndMin)}`;
 
         const slotDiv = document.createElement('div');
         slotDiv.className = `slot ${slots[i]}`;

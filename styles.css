@@ -941,7 +941,7 @@ body {
 }
 .trow {
     display: grid;
-    grid-template-columns: 100px 1fr;
+    grid-template-columns: 120px 1fr;
     gap: 6px;
     align-items: center;
     padding: 6px 0;
@@ -968,6 +968,12 @@ body {
     .slot {
         height: 36px;
         font-size: 14px;
+    }
+    .trow {
+        grid-template-columns: 110px 1fr;
+    }
+    .time {
+        font-size: 11px;
     }
 }
 .FREE {
