@@ -25,13 +25,849 @@ const COMPANIES = [
     { id: 'C2', name: 'Loodgietersbedrijf AM', color: '#3b82f6' }
 ];
 
-// Demo services catalog
+// Professional services catalog organized by categories
 const SERVICES = [
+    // Sanitair Services
     {
         id: 'S1',
-        name: 'Verstopping / Afvoer',
+        name: 'Toilet plaatsen (staand)',
+        category: 'Sanitair',
+        type: 'STANDARD',
+        durationSlots: 4, // 2 hours
+        base: 150,
+        questions: [
+            {
+                key: 'location',
+                label: 'Locatie',
+                type: 'select',
+                options: ['Badkamer', 'Toilet', 'Gastenbadkamer']
+            },
+            { key: 'removal', label: 'Oude toilet verwijderen?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 150;
+            if (ans.removal === true) p += 50;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S2',
+        name: 'Toilet plaatsen (hangend)',
+        category: 'Sanitair',
+        type: 'STANDARD',
+        durationSlots: 6, // 3 hours
+        base: 250,
+        questions: [
+            {
+                key: 'location',
+                label: 'Locatie',
+                type: 'select',
+                options: ['Badkamer', 'Toilet', 'Gastenbadkamer']
+            },
+            { key: 'removal', label: 'Oude toilet verwijderen?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 250;
+            if (ans.removal === true) p += 50;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S3',
+        name: 'Urinoir installeren',
+        category: 'Sanitair',
+        type: 'STANDARD',
+        durationSlots: 4,
+        base: 200,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type urinoir',
+                type: 'select',
+                options: ['Wandmodel', 'Met spoeling', 'Watervrij']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 200;
+            if (ans.type === 'Watervrij') p += 50;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S4',
+        name: 'Wastafel / wasbak installeren',
+        category: 'Sanitair',
+        type: 'STANDARD',
+        durationSlots: 3,
+        base: 140,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type wastafel',
+                type: 'select',
+                options: ['Hangend', 'Met onderkast', 'Vrijstaand']
+            },
+            {
+                key: 'location',
+                label: 'Locatie',
+                type: 'select',
+                options: ['Badkamer', 'Toilet', 'Keuken', 'Slaapkamer']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 140;
+            if (ans.type === 'Vrijstaand') p += 30;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S5',
+        name: 'Fonteintje in toilet',
+        category: 'Sanitair',
         type: 'EASY',
-        durationSlots: 2, // 60m
+        durationSlots: 2,
+        base: 115,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type fonteintje',
+                type: 'select',
+                options: ['Wandmodel', 'Hoekmodel', 'Met onderkast']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 115;
+            if (ans.type === 'Met onderkast') p += 25;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S6',
+        name: 'Douchebak plaatsen',
+        category: 'Sanitair',
+        type: 'STANDARD',
+        durationSlots: 4,
+        base: 250,
+        questions: [
+            {
+                key: 'size',
+                label: 'Afmeting douchebak',
+                type: 'select',
+                options: ['80x80 cm', '90x90 cm', '120x80 cm', 'Op maat']
+            },
+            { key: 'height', label: 'Verhoogd plaatsen?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 250;
+            if (ans.size === 'Op maat') p += 75;
+            if (ans.height === true) p += 50;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S7',
+        name: 'Inloopdouche installeren',
+        category: 'Sanitair',
+        type: 'COMPLEX',
+        durationSlots: 6,
+        base: 325,
+        questions: [
+            {
+                key: 'size',
+                label: 'Afmeting inloopdouche',
+                type: 'select',
+                options: ['100x100 cm', '120x90 cm', '140x90 cm', 'Op maat']
+            },
+            {
+                key: 'glass',
+                label: 'Type glaswand',
+                type: 'select',
+                options: ['Standaard helder', 'Matglas', 'Gehard glas']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 325;
+            if (ans.size === 'Op maat') p += 100;
+            if (ans.glass === 'Gehard glas') p += 75;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S8',
+        name: 'Douchekraan/thermostaatkraan',
+        category: 'Sanitair',
+        type: 'STANDARD',
+        durationSlots: 2,
+        base: 140,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type kraan',
+                type: 'select',
+                options: ['Gewone douchekraan', 'Thermostaatkraan', 'Regendoucheset']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 140;
+            if (ans.type === 'Regendoucheset') p += 60;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S9',
+        name: 'Bad plaatsen',
+        category: 'Sanitair',
+        type: 'COMPLEX',
+        durationSlots: 8,
+        base: 400,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type bad',
+                type: 'select',
+                options: ['Standaard rechthoek', 'Hoekbad', 'Vrijstaand', 'Inbouw']
+            },
+            { key: 'removal', label: 'Oude bad verwijderen?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 400;
+            if (ans.type === 'Vrijstaand') p += 100;
+            if (ans.removal === true) p += 75;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S10',
+        name: 'Mengkraan (wastafel/keuken)',
+        category: 'Sanitair',
+        type: 'EASY',
+        durationSlots: 2,
+        base: 115,
+        questions: [
+            {
+                key: 'location',
+                label: 'Locatie',
+                type: 'select',
+                options: ['Wastafel', 'Keuken', 'Badkamer', 'Toilet']
+            },
+            {
+                key: 'type',
+                label: 'Type kraan',
+                type: 'select',
+                options: ['Standaard', 'Met uittrekbare sproeier', 'Hoge uitloop']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 115;
+            if (ans.type === 'Met uittrekbare sproeier') p += 25;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S11',
+        name: 'Regendouche / luxe douchekop',
+        category: 'Sanitair',
+        type: 'STANDARD',
+        durationSlots: 3,
+        base: 200,
+        questions: [
+            {
+                key: 'size',
+                label: 'Afmeting douchekop',
+                type: 'select',
+                options: ['20 cm', '25 cm', '30 cm', '40 cm+']
+            },
+            {
+                key: 'features',
+                label: 'Extra functies',
+                type: 'select',
+                options: ['Standaard', 'LED verlichting', 'Verschillende straalsoorten']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 200;
+            if (ans.size === '40 cm+') p += 50;
+            if (ans.features === 'LED verlichting') p += 75;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+
+    // Keuken Services
+    {
+        id: 'S12',
+        name: 'Keukenkraan monteren',
+        category: 'Keuken',
+        type: 'EASY',
+        durationSlots: 2,
+        base: 115,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type keukenkraan',
+                type: 'select',
+                options: ['Standaard', 'Met uittrekbare sproeier', 'Hoge boog', 'Professioneel']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 115;
+            if (ans.type === 'Professioneel') p += 40;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S13',
+        name: 'Gootsteen installeren',
+        category: 'Keuken',
+        type: 'STANDARD',
+        durationSlots: 4,
+        base: 200,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type gootsteen',
+                type: 'select',
+                options: ['Enkelbak', 'Dubbelbak', 'Met spoelbak', 'Onderbouw']
+            },
+            {
+                key: 'material',
+                label: 'Materiaal',
+                type: 'select',
+                options: ['RVS', 'Graniet', 'Keramiek']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 200;
+            if (ans.type === 'Dubbelbak') p += 30;
+            if (ans.material === 'Graniet') p += 50;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S14',
+        name: 'Afwasmachine aansluiten',
+        category: 'Keuken',
+        type: 'EASY',
+        durationSlots: 2,
+        base: 100,
+        questions: [
+            { key: 'newConnection', label: 'Nieuwe aansluiting maken?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 100;
+            if (ans.newConnection === true) p += 50;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S15',
+        name: 'Koelkast met wateraansluiting',
+        category: 'Keuken',
+        type: 'STANDARD',
+        durationSlots: 3,
+        base: 125,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type aansluiting',
+                type: 'select',
+                options: ['Waterfilter', 'IJsblokjesmachine', 'Beide functies']
+            },
+            {
+                key: 'distance',
+                label: 'Afstand tot waterleiding',
+                type: 'select',
+                options: ['< 2 meter', '2-5 meter', '> 5 meter']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 125;
+            if (ans.type === 'Beide functies') p += 30;
+            if (ans.distance === '> 5 meter') p += 40;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+
+    // Verwarming & Warm water Services
+    {
+        id: 'S16',
+        name: 'CV-ketel plaatsen (excl. keuring)',
+        category: 'Verwarming & Warm water',
+        type: 'COMPLEX',
+        durationSlots: 12, // 6 hours
+        base: 800,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type CV-ketel',
+                type: 'select',
+                options: ['Combiketel', 'Alleen verwarming', 'Condensatieketel']
+            },
+            {
+                key: 'power',
+                label: 'Vermogen',
+                type: 'select',
+                options: ['< 20 kW', '20-30 kW', '> 30 kW']
+            },
+            {
+                key: 'location',
+                label: 'Locatie',
+                type: 'select',
+                options: ['Keuken', 'Bijkeuken', 'Zolder', 'Kelder']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 800;
+            if (ans.type === 'Condensatieketel') p += 100;
+            if (ans.power === '> 30 kW') p += 150;
+            if (ans.afterHours === true) p += 120;
+            return p;
+        }
+    },
+    {
+        id: 'S17',
+        name: 'Boiler installeren',
+        category: 'Verwarming & Warm water',
+        type: 'STANDARD',
+        durationSlots: 4,
+        base: 275,
+        questions: [
+            {
+                key: 'capacity',
+                label: 'Inhoud boiler',
+                type: 'select',
+                options: ['80 liter', '120 liter', '150 liter', '200+ liter']
+            },
+            {
+                key: 'type',
+                label: 'Type boiler',
+                type: 'select',
+                options: ['Elektrisch', 'Gas', 'Warmtepomp']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 275;
+            if (ans.capacity === '200+ liter') p += 50;
+            if (ans.type === 'Warmtepomp') p += 100;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S18',
+        name: 'Geiser installeren',
+        category: 'Verwarming & Warm water',
+        type: 'STANDARD',
+        durationSlots: 4,
+        base: 325,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type geiser',
+                type: 'select',
+                options: ['Gas doorstroomgeiser', 'Elektrische geiser', 'Condensatie geiser']
+            },
+            {
+                key: 'capacity',
+                label: 'Capaciteit',
+                type: 'select',
+                options: ['< 15 l/min', '15-20 l/min', '> 20 l/min']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 325;
+            if (ans.type === 'Condensatie geiser') p += 75;
+            if (ans.capacity === '> 20 l/min') p += 50;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S19',
+        name: 'Radiator monteren',
+        category: 'Verwarming & Warm water',
+        type: 'STANDARD',
+        durationSlots: 3,
+        base: 160,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type radiator',
+                type: 'select',
+                options: ['Paneel radiator', 'Convector', 'Handdoekradiator']
+            },
+            {
+                key: 'size',
+                label: 'Afmeting',
+                type: 'select',
+                options: ['Klein (< 60cm)', 'Middel (60-120cm)', 'Groot (> 120cm)']
+            },
+            { key: 'newPiping', label: 'Nieuwe leidingen nodig?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 160;
+            if (ans.size === 'Groot (> 120cm)') p += 30;
+            if (ans.newPiping === true) p += 80;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S20',
+        name: 'Designradiator plaatsen',
+        category: 'Verwarming & Warm water',
+        type: 'STANDARD',
+        durationSlots: 3,
+        base: 200,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type designradiator',
+                type: 'select',
+                options: ['Verticaal', 'Horizontaal', 'Hoekmodel', 'Vrijstaand']
+            },
+            {
+                key: 'material',
+                label: 'Materiaal',
+                type: 'select',
+                options: ['Staal', 'Aluminium', 'RVS']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 200;
+            if (ans.type === 'Vrijstaand') p += 50;
+            if (ans.material === 'RVS') p += 40;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S21',
+        name: 'Vloerverwarming verdeler installeren',
+        category: 'Verwarming & Warm water',
+        type: 'COMPLEX',
+        durationSlots: 6,
+        base: 325,
+        questions: [
+            {
+                key: 'groups',
+                label: 'Aantal groepen',
+                type: 'select',
+                options: ['2-4 groepen', '5-8 groepen', '9-12 groepen']
+            },
+            { key: 'automation', label: 'Met automatische regeling?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 325;
+            if (ans.groups === '9-12 groepen') p += 100;
+            if (ans.automation === true) p += 150;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+
+    // Overig Services
+    {
+        id: 'S22',
+        name: 'Buitenkranen installeren',
+        category: 'Overig',
+        type: 'STANDARD',
+        durationSlots: 3,
+        base: 150,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type buitenkraan',
+                type: 'select',
+                options: ['Standaard', 'Vorstvrij', 'Met slangaansluiting']
+            },
+            {
+                key: 'location',
+                label: 'Locatie',
+                type: 'select',
+                options: ['Voortuin', 'Achtertuin', 'Zijkant huis', 'Balkon']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 150;
+            if (ans.type === 'Vorstvrij') p += 40;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S23',
+        name: 'Waterontharder aansluiten',
+        category: 'Overig',
+        type: 'COMPLEX',
+        durationSlots: 6,
+        base: 300,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type waterontharder',
+                type: 'select',
+                options: ['Compacte uitvoering', 'Standaard model', 'Professioneel systeem']
+            },
+            { key: 'bypass', label: 'Bypass installeren?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 300;
+            if (ans.type === 'Professioneel systeem') p += 100;
+            if (ans.bypass === true) p += 75;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S24',
+        name: 'Condensafvoer (bij CV/airco)',
+        category: 'Overig',
+        type: 'EASY',
+        durationSlots: 2,
+        base: 115,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type installatie',
+                type: 'select',
+                options: ['CV-ketel', 'Airconditioning', 'Beide']
+            },
+            {
+                key: 'distance',
+                label: 'Afstand tot afvoer',
+                type: 'select',
+                options: ['< 3 meter', '3-6 meter', '> 6 meter']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 115;
+            if (ans.distance === '> 6 meter') p += 40;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S25',
+        name: 'Regenwatersysteem installeren',
+        category: 'Overig',
+        type: 'COMPLEX',
+        durationSlots: 12, // 6 hours
+        base: 850,
+        questions: [
+            {
+                key: 'capacity',
+                label: 'Tankinhoud',
+                type: 'select',
+                options: ['< 1000L', '1000-3000L', '> 3000L']
+            },
+            { key: 'pump', label: 'Met automatische pomp?', type: 'boolean' },
+            { key: 'filtering', label: 'Filtersysteem?', type: 'boolean' },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 850;
+            if (ans.capacity === '> 3000L') p += 200;
+            if (ans.pump === true) p += 150;
+            if (ans.filtering === true) p += 100;
+            if (ans.afterHours === true) p += 120;
+            return p;
+        }
+    },
+
+    // Leidingen & Afvoer Services (with meter-based pricing)
+    {
+        id: 'S26',
+        name: 'Koud/warmwaterleiding trekken',
+        category: 'Leidingen & Afvoer',
+        type: 'STANDARD',
+        durationSlots: 4,
+        base: 80,
+        pricePerMeter: 15,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type leiding',
+                type: 'select',
+                options: ['Koudwater', 'Warmwater', 'Beide']
+            },
+            { key: 'meters', label: 'Lengte in meters', type: 'number', min: 1, max: 50 },
+            {
+                key: 'material',
+                label: 'Materiaal',
+                type: 'select',
+                options: ['Kunststof (PEX)', 'Koper', 'Meerlagen']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 80; // base price
+            const meters = Math.max(1, parseInt(ans.meters) || 1);
+            p += meters * 15; // per meter cost
+            if (ans.material === 'Koper') p += meters * 5;
+            if (ans.type === 'Beide') p += 40;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S27',
+        name: 'Afvoer aansluiten',
+        category: 'Leidingen & Afvoer',
+        type: 'STANDARD',
+        durationSlots: 4,
+        base: 80,
+        pricePerMeter: 20,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type afvoer',
+                type: 'select',
+                options: ['Wastafel', 'Douche/bad', 'Keuken', 'Toilet']
+            },
+            {
+                key: 'meters',
+                label: 'Lengte afvoerleiding (meters)',
+                type: 'number',
+                min: 1,
+                max: 30
+            },
+            {
+                key: 'diameter',
+                label: 'Diameter',
+                type: 'select',
+                options: ['32mm', '40mm', '50mm', '110mm']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 80;
+            const meters = Math.max(1, parseInt(ans.meters) || 1);
+            p += meters * 20;
+            if (ans.diameter === '110mm') p += meters * 5;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S28',
+        name: 'Rioolaansluiting (binnenhuis)',
+        category: 'Leidingen & Afvoer',
+        type: 'COMPLEX',
+        durationSlots: 6,
+        base: 150,
+        pricePerMeter: 30,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type aansluiting',
+                type: 'select',
+                options: ['Toilet', 'Keuken', 'Badkamer', 'Volledig sanitair']
+            },
+            {
+                key: 'meters',
+                label: 'Afstand tot hoofdriool (meters)',
+                type: 'number',
+                min: 1,
+                max: 20
+            },
+            {
+                key: 'complexity',
+                label: 'Complexiteit',
+                type: 'select',
+                options: ['Eenvoudig', 'Door wanden/vloeren', 'Met pompsysteem']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 150;
+            const meters = Math.max(1, parseInt(ans.meters) || 1);
+            if (meters > 1) p += (meters - 1) * 30; // First meter included in base
+            if (ans.complexity === 'Met pompsysteem') p += 200;
+            if (ans.complexity === 'Door wanden/vloeren') p += 100;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+    {
+        id: 'S29',
+        name: 'Regenpijp/HWA aansluiten',
+        category: 'Leidingen & Afvoer',
+        type: 'STANDARD',
+        durationSlots: 3,
+        base: 100,
+        pricePerMeter: 25,
+        questions: [
+            {
+                key: 'type',
+                label: 'Type aansluiting',
+                type: 'select',
+                options: ['Regenpijp', 'Hemelwaterafvoer', 'Dakgoot']
+            },
+            { key: 'meters', label: 'Lengte leiding (meters)', type: 'number', min: 1, max: 15 },
+            {
+                key: 'material',
+                label: 'Materiaal',
+                type: 'select',
+                options: ['PVC', 'Gietijzer', 'Zinken']
+            },
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
+        ],
+        price: (ans) => {
+            let p = 100;
+            const meters = Math.max(1, parseInt(ans.meters) || 1);
+            p += meters * 25;
+            if (ans.material === 'Gietijzer') p += meters * 10;
+            if (ans.afterHours === true) p += 60;
+            return p;
+        }
+    },
+
+    // Keep original services for compatibility
+    {
+        id: 'S30',
+        name: 'Verstopping / Afvoer (Spoedservice)',
+        category: 'Spoedservice',
+        type: 'EASY',
+        durationSlots: 2,
         base: 95,
         questions: [
             {
@@ -49,7 +885,7 @@ const SERVICES = [
             { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
         ],
         price: (ans) => {
-            let p = 95; // base
+            let p = 95;
             if (ans.severity === 'Volledig verstopt') p += 40;
             if (ans.location === 'Toilet') p += 20;
             if (ans.afterHours === true) p += 60;
@@ -57,13 +893,20 @@ const SERVICES = [
         }
     },
     {
-        id: 'S2',
+        id: 'S31',
         name: 'Badkamer Renovatie (Offerte)',
+        category: 'Renovatie',
         type: 'COMPLEX',
-        durationSlots: 4, // 2h site visit slot (demo)
+        durationSlots: 4,
         base: 0,
         questions: [
-            { key: 'area', label: 'Geschatte badkamergrootte (m²)', type: 'number' },
+            {
+                key: 'area',
+                label: 'Geschatte badkamergrootte (m²)',
+                type: 'number',
+                min: 2,
+                max: 20
+            },
             { key: 'shower', label: 'Douche?', type: 'boolean' },
             { key: 'bathtub', label: 'Ligbad?', type: 'boolean' }
         ],
@@ -1618,11 +2461,51 @@ function populateServiceSelect() {
     const sel = document.getElementById('c_service');
     if (!sel) return;
     sel.innerHTML = '<option value="">Selecteer een service…</option>';
+
+    // Group services by category
+    const categories = {};
     SERVICES.forEach((s) => {
-        const o = document.createElement('option');
-        o.value = s.id;
-        o.textContent = s.name;
-        sel.appendChild(o);
+        const cat = s.category || 'Overig';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(s);
+    });
+
+    // Create optgroups for each category
+    const categoryOrder = [
+        'Spoedservice',
+        'Sanitair',
+        'Keuken',
+        'Verwarming & Warm water',
+        'Leidingen & Afvoer',
+        'Overig',
+        'Renovatie'
+    ];
+
+    categoryOrder.forEach((catName) => {
+        if (!categories[catName]) return;
+
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = catName;
+
+        categories[catName].forEach((s) => {
+            const o = document.createElement('option');
+            o.value = s.id;
+
+            // Add pricing info to service name
+            let displayName = s.name;
+            if (s.pricePerMeter) {
+                displayName += ` (€${s.base} + €${s.pricePerMeter}/m)`;
+            } else if (s.base > 0) {
+                displayName += ` (vanaf €${s.base})`;
+            } else {
+                displayName += ` (offerte op maat)`;
+            }
+
+            o.textContent = displayName;
+            optgroup.appendChild(o);
+        });
+
+        sel.appendChild(optgroup);
     });
 }
 
@@ -1661,9 +2544,11 @@ function renderQuestions() {
         } else if (q.type === 'number') {
             input = document.createElement('input');
             input.type = 'number';
-            input.min = '0';
+            input.min = q.min || '0';
+            input.max = q.max || '999';
             input.step = '1';
-            input.placeholder = '0';
+            input.placeholder = q.min || '0';
+            input.value = q.min || '1'; // Default to minimum value for meter inputs
         } else {
             input = document.createElement('input');
         }
@@ -1713,7 +2598,24 @@ function updateEstimate() {
     if (price == null) {
         el.textContent = 'Offerte wordt verstrekt';
     } else {
-        el.textContent = `~ €${price.toFixed(2)}`;
+        // For meter-based pricing, show breakdown
+        if (service.pricePerMeter && ans.meters) {
+            const basePrice = service.base;
+            const meterPrice = ans.meters * service.pricePerMeter;
+            const total = price;
+            el.innerHTML = `
+                <div style="font-size: 13px; line-height: 1.4;">
+                    <strong>€${total.toFixed(2)} totaal</strong><br>
+                    <span style="color: var(--sub);">
+                        Basisprijs: €${basePrice}<br>
+                        ${ans.meters}m × €${service.pricePerMeter} = €${meterPrice}
+                        ${total > basePrice + meterPrice ? '<br>+ extra opties' : ''}
+                    </span>
+                </div>
+            `;
+        } else {
+            el.textContent = `€${price.toFixed(2)}`;
+        }
     }
 }
 
