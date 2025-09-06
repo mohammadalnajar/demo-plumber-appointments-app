@@ -5,6 +5,20 @@ const SLOT_MIN = 30; // 30-min slots
 const TEMP_HOLD_DURATION = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
 const STORAGE_KEY = 'plumberDemoState_v5'; // Updated version for timer feature
 
+// Dutch labels for slot statuses
+const STATUS_LABELS = {
+    FREE: 'Vrij',
+    TEMP: 'Tijdelijk vastgehouden',
+    BOOKED: 'Geboekt',
+    UNAVAILABLE: 'Niet beschikbaar',
+    // Appointment statuses
+    CONFIRMED: 'Bevestigd',
+    REJECTED: 'Afgewezen',
+    CANCELLED: 'Geannuleerd',
+    EXPIRED: 'Verlopen',
+    EXPIRED_UNAVAILABLE: 'Verlopen - Niet beschikbaar'
+};
+
 // Demo companies
 const COMPANIES = [
     { id: 'C1', name: 'Loodgietersbedrijf Utrecht', color: '#22c55e' },
@@ -68,6 +82,12 @@ function parseDateKey(key) {
     const [y, m, d] = key.split('-').map(Number);
     return new Date(y, m - 1, d);
 }
+
+// Get Dutch label for slot status
+function getStatusLabel(status) {
+    return STATUS_LABELS[status] || status;
+}
+
 function minutesToHHMM(min) {
     const h = Math.floor(min / 60),
         m = min % 60;
@@ -380,7 +400,7 @@ function renderDay() {
 
         // Find appointment info for this slot
         const apptInfo = findAppointmentInfo(dateKey, i);
-        let displayText = slots[i];
+        let displayText = getStatusLabel(slots[i]);
 
         if (slots[i] === 'BOOKED' || slots[i] === 'TEMP') {
             let customerName = 'Unknown';
@@ -412,7 +432,7 @@ function renderDay() {
                 shouldShowActions = true;
             }
 
-            displayText = `${slots[i]} - ${customerName}${timerInfo}`;
+            displayText = `${getStatusLabel(slots[i])} - ${customerName}${timerInfo}`;
 
             if (shouldShowActions) {
                 // Add action buttons for booked/temp slots
@@ -587,18 +607,18 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         content = `
       <div class="popup-row">
         <span class="popup-label">Status:</span>
-        <span class="popup-value">${appt.status}</span>
+        <span class="popup-value">${getStatusLabel(appt.status)}</span>
       </div>${timerDisplay}
       <div class="popup-row">
-        <span class="popup-label">Company:</span>
-        <span class="popup-value">${appt.companyName || 'Unknown Company'}</span>
+        <span class="popup-label">Bedrijf:</span>
+        <span class="popup-value">${appt.companyName || 'Onbekend Bedrijf'}</span>
       </div>
       <div class="popup-row">
-        <span class="popup-label">Customer:</span>
+        <span class="popup-label">Klant:</span>
         <span class="popup-value">${customerName}</span>
       </div>
       <div class="popup-row">
-        <span class="popup-label">Email:</span>
+        <span class="popup-label">E-mail:</span>
         <span class="popup-value">${email}</span>
       </div>
       ${
@@ -607,11 +627,11 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
               : ''
       }
       <div class="popup-row">
-        <span class="popup-label">Date:</span>
+        <span class="popup-label">Datum:</span>
         <span class="popup-value">${dateKey}</span>
       </div>
       <div class="popup-row">
-        <span class="popup-label">Time:</span>
+        <span class="popup-label">Tijd:</span>
         <span class="popup-value">${startTime} - ${endTime}</span>
       </div>
       <div class="popup-row">
@@ -625,13 +645,13 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         <button class="btn" onclick="
           const phone = prompt('Enter phone number for ${customerName}:');
           if (phone) {
-            const message = encodeURIComponent('Hi ${customerName}, regarding your appointment on ${dateKey} at ${startTime}');
+            const message = encodeURIComponent('Hallo ${customerName}, betreft uw afspraak op ${dateKey} om ${startTime}');
             window.open('https://wa.me/' + phone + '?text=' + message, '_blank');
           }
         ">&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 258"><defs><linearGradient id="whatsappGrad1" x1="50%" x2="50%" y1="100%" y2="0%"><stop offset="0%" stop-color="#1faf38"/><stop offset="100%" stop-color="#60d669"/></linearGradient><linearGradient id="whatsappGrad2" x1="50%" x2="50%" y1="100%" y2="0%"><stop offset="0%" stop-color="#f9f9f9"/><stop offset="100%" stop-color="#fff"/></linearGradient></defs><path fill="url(#whatsappGrad1)" d="M5.463 127.456c-.006 21.677 5.658 42.843 16.428 61.499L4.433 252.697l65.232-17.104a123 123 0 0 0 58.8 14.97h.054c67.815 0 123.018-55.183 123.047-123.01c.013-32.867-12.775-63.773-36.009-87.025c-23.23-23.25-54.125-36.061-87.043-36.076c-67.823 0-123.022 55.18-123.05 123.004"/><path fill="url(#whatsappGrad2)" d="M1.07 127.416c-.007 22.457 5.86 44.38 17.014 63.704L0 257.147l67.571-17.717c18.618 10.151 39.58 15.503 60.91 15.511h.055c70.248 0 127.434-57.168 127.464-127.423c.012-34.048-13.236-66.065-37.3-90.15C194.633 13.286 162.633.014 128.536 0C58.276 0 1.099 57.16 1.071 127.416m40.24 60.376l-2.523-4.005c-10.606-16.864-16.204-36.352-16.196-56.363C22.614 69.029 70.138 21.52 128.576 21.52c28.3.012 54.896 11.044 74.9 31.06c20.003 20.018 31.01 46.628 31.003 74.93c-.026 58.395-47.551 105.91-105.943 105.91h-.042c-19.013-.01-37.66-5.116-53.922-14.765l-3.87-2.295l-40.098 10.513z"/><path fill="#fff" d="M96.678 74.148c-2.386-5.303-4.897-5.41-7.166-5.503c-1.858-.08-3.982-.074-6.104-.074c-2.124 0-5.575.799-8.492 3.984c-2.92 3.188-11.148 10.892-11.148 26.561s11.413 30.813 13.004 32.94c1.593 2.123 22.033 35.307 54.405 48.073c26.904 10.609 32.379 8.499 38.218 7.967c5.84-.53 18.844-7.702 21.497-15.139c2.655-7.436 2.655-13.81 1.859-15.142c-.796-1.327-2.92-2.124-6.105-3.716s-18.844-9.298-21.763-10.361c-2.92-1.062-5.043-1.592-7.167 1.597c-2.124 3.184-8.223 10.356-10.082 12.48c-1.857 2.129-3.716 2.394-6.9.801c-3.187-1.598-13.444-4.957-25.613-15.806c-9.468-8.442-15.86-18.867-17.718-22.056c-1.858-3.184-.199-4.91 1.398-6.497c1.431-1.427 3.186-3.719 4.78-5.578c1.588-1.86 2.118-3.187 3.18-5.311c1.063-2.126.531-3.986-.264-5.579c-.798-1.593-6.987-17.343-9.819-23.64"/></svg> WhatsApp</button>
         <button class="btn" onclick="
-          const subject = encodeURIComponent('Appointment - ${dateKey}');
-          const body = encodeURIComponent('Hi ${customerName},\\n\\nRegarding your appointment on ${dateKey} at ${startTime}.\\n\\nBest regards,\\nPlumber Service');
+          const subject = encodeURIComponent('Afspraak - ${dateKey}');
+          const body = encodeURIComponent('Hallo ${customerName},\\n\\nBetreft uw afspraak op ${dateKey} om ${startTime}.\\n\\nMet vriendelijke groet,\\nLoodgieter Service');
           window.open('mailto:${email}?subject=' + subject + '&body=' + body, '_blank');
         ">&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32"><path fill="#42a5f5" d="M28 6H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2m0 6l-12 6l-12-6V8l12 6l12-6Z"/></svg> Email</button>
         `
@@ -697,12 +717,12 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
           }
         ">&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 258"><defs><linearGradient id="whatsappGrad1" x1="50%" x2="50%" y1="100%" y2="0%"><stop offset="0%" stop-color="#1faf38"/><stop offset="100%" stop-color="#60d669"/></linearGradient><linearGradient id="whatsappGrad2" x1="50%" x2="50%" y1="100%" y2="0%"><stop offset="0%" stop-color="#f9f9f9"/><stop offset="100%" stop-color="#fff"/></linearGradient></defs><path fill="url(#whatsappGrad1)" d="M5.463 127.456c-.006 21.677 5.658 42.843 16.428 61.499L4.433 252.697l65.232-17.104a123 123 0 0 0 58.8 14.97h.054c67.815 0 123.018-55.183 123.047-123.01c.013-32.867-12.775-63.773-36.009-87.025c-23.23-23.25-54.125-36.061-87.043-36.076c-67.823 0-123.022 55.18-123.05 123.004"/><path fill="url(#whatsappGrad2)" d="M1.07 127.416c-.007 22.457 5.86 44.38 17.014 63.704L0 257.147l67.571-17.717c18.618 10.151 39.58 15.503 60.91 15.511h.055c70.248 0 127.434-57.168 127.464-127.423c.012-34.048-13.236-66.065-37.3-90.15C194.633 13.286 162.633.014 128.536 0C58.276 0 1.099 57.16 1.071 127.416m40.24 60.376l-2.523-4.005c-10.606-16.864-16.204-36.352-16.196-56.363C22.614 69.029 70.138 21.52 128.576 21.52c28.3.012 54.896 11.044 74.9 31.06c20.003 20.018 31.01 46.628 31.003 74.93c-.026 58.395-47.551 105.91-105.943 105.91h-.042c-19.013-.01-37.66-5.116-53.922-14.765l-3.87-2.295l-40.098 10.513z"/><path fill="#fff" d="M96.678 74.148c-2.386-5.303-4.897-5.41-7.166-5.503c-1.858-.08-3.982-.074-6.104-.074c-2.124 0-5.575.799-8.492 3.984c-2.92 3.188-11.148 10.892-11.148 26.561s11.413 30.813 13.004 32.94c1.593 2.123 22.033 35.307 54.405 48.073c26.904 10.609 32.379 8.499 38.218 7.967c5.84-.53 18.844-7.702 21.497-15.139c2.655-7.436 2.655-13.81 1.859-15.142c-.796-1.327-2.92-2.124-6.105-3.716s-18.844-9.298-21.763-10.361c-2.92-1.062-5.043-1.592-7.167 1.597c-2.124 3.184-8.223 10.356-10.082 12.48c-1.857 2.129-3.716 2.394-6.9.801c-3.187-1.598-13.444-4.957-25.613-15.806c-9.468-8.442-15.86-18.867-17.718-22.056c-1.858-3.184-.199-4.91 1.398-6.497c1.431-1.427 3.186-3.719 4.78-5.578c1.588-1.86 2.118-3.187 3.18-5.311c1.063-2.126.531-3.986-.264-5.579c-.798-1.593-6.987-17.343-9.819-23.64"/></svg> WhatsApp</button>
         <button class="btn" onclick="
-          const subject = encodeURIComponent('Service Request - ${req.serviceName}');
-          const body = encodeURIComponent('Hi ${
+          const subject = encodeURIComponent('Serviceverzoek - ${req.serviceName}');
+          const body = encodeURIComponent('Hallo ${
               req.customer.name
-          },\\n\\nRegarding your service request for ${
+          },\\n\\nBetreft uw serviceverzoek voor ${
             req.serviceName
-        }.\\n\\nBest regards,\\nPlumber Service');
+        }.\\n\\nMet vriendelijke groet,\\nLoodgieter Service');
           window.open('mailto:${
               req.customer.email
           }?subject=' + subject + '&body=' + body, '_blank');
@@ -713,50 +733,50 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
         // Handle FREE and UNAVAILABLE slots with toggle functionality
         if (slotStatus === 'FREE' || slotStatus === 'UNAVAILABLE') {
             const companyName =
-                COMPANIES.find((c) => c.id === state.selectedCompanyId)?.name || 'Unknown';
+                COMPANIES.find((c) => c.id === state.selectedCompanyId)?.name || 'Onbekend';
             const slotTime = minutesToHHMM(WORK_START * 60 + slotIndex * SLOT_MIN);
             const nextSlotTime = minutesToHHMM(WORK_START * 60 + (slotIndex + 1) * SLOT_MIN);
             const toggleTo = slotStatus === 'FREE' ? 'UNAVAILABLE' : 'FREE';
-            const toggleLabel = toggleTo === 'FREE' ? 'Available' : 'Unavailable';
+            const toggleLabel = toggleTo === 'FREE' ? 'Beschikbaar' : 'Niet beschikbaar';
             const actionEmoji = toggleTo === 'FREE' ? '✅' : '🚫';
 
-            title = `${slotStatus} Slot - Toggle Status`;
+            title = `${getStatusLabel(slotStatus)} Tijdslot - Status Wijzigen`;
             content = `
               <div class="popup-row">
-                <span class="popup-label">Company:</span>
+                <span class="popup-label">Bedrijf:</span>
                 <span class="popup-value">${companyName}</span>
               </div>
               <div class="popup-row">
-                <span class="popup-label">Date:</span>
+                <span class="popup-label">Datum:</span>
                 <span class="popup-value">${dateKey}</span>
               </div>
               <div class="popup-row">
-                <span class="popup-label">Time:</span>
+                <span class="popup-label">Tijd:</span>
                 <span class="popup-value">${slotTime} - ${nextSlotTime}</span>
               </div>
               <div class="popup-row">
-                <span class="popup-label">Current Status:</span>
+                <span class="popup-label">Huidige Status:</span>
                 <span class="popup-value" style="color: ${
                     slotStatus === 'FREE' ? 'var(--green)' : 'var(--yellow)'
-                };">${slotStatus}</span>
+                };">${getStatusLabel(slotStatus)}</span>
               </div>
               <div style="margin-top: 16px; padding: 16px; background: var(--muted); border-radius: 8px;">
                 <p style="margin: 0 0 12px 0; color: var(--text); font-weight: 500;">
-                  ${actionEmoji} Change this slot to <strong>${toggleLabel}</strong>?
+                  ${actionEmoji} Dit tijdslot wijzigen naar <strong>${toggleLabel}</strong>?
                 </p>
                 <div style="display: flex; gap: 8px; justify-content: center;">
                   <button class="btn primary" onclick="toggleSlotStatus('${dateKey}', ${slotIndex}, '${toggleTo}', this)">
-                    ${actionEmoji} Set as ${toggleLabel}
+                    ${actionEmoji} Instellen als ${toggleLabel}
                   </button>
                   <button class="btn secondary popup-close">Annuleren</button>
                 </div>
               </div>
             `;
         } else {
-            title = `${slotStatus} Slot`;
+            title = `${getStatusLabel(slotStatus)} Tijdslot`;
             content = `
               <div class="popup-row">
-                <span class="popup-label">Date:</span>
+                <span class="popup-label">Datum:</span>
                 <span class="popup-value">${dateKey}</span>
               </div>
               <div class="popup-row">
@@ -767,11 +787,11 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
               </div>
               <div class="popup-row">
                 <span class="popup-label">Status:</span>
-                <span class="popup-value">${slotStatus}</span>
+                <span class="popup-value">${getStatusLabel(slotStatus)}</span>
               </div>
               <div class="popup-row">
                 <span class="popup-label">Info:</span>
-                <span class="popup-value">No appointment details found</span>
+                <span class="popup-value">Geen afspraakgegevens gevonden</span>
               </div>
             `;
         }
@@ -823,8 +843,8 @@ function toggleSlotStatus(dateKey, slotIndex, newStatus, buttonElement) {
     const statusIcon = newStatus === 'FREE' ? '✅' : '🚫';
     const actionDescription =
         newStatus === 'FREE'
-            ? 'This slot will become available for bookings.'
-            : 'This slot will be blocked from bookings.';
+            ? 'Dit tijdslot wordt beschikbaar voor boekingen.'
+            : 'Dit tijdslot wordt geblokkeerd voor boekingen.';
 
     confirmOverlay.innerHTML = `
         <div class="popup confirmation-popup">
@@ -1000,7 +1020,7 @@ function renderMail() {
         } else if (appt) {
             const info = document.createElement('div');
             info.className = 'meta';
-            info.textContent = `Status: ${appt.status}`;
+            info.textContent = `Status: ${getStatusLabel(appt.status)}`;
             card.appendChild(info);
         }
         list.appendChild(card);
@@ -1819,7 +1839,7 @@ function sendClientRequest() {
     const service = SERVICES.find((s) => s.id === state.clientSelection.serviceId);
     const sel = state.clientSelection;
     if (!service || !sel.dateKey || sel.startIdx == null) {
-        showClientError('Please choose a date and time.');
+        showClientError('Kies een datum en tijd.');
         return;
     }
 
@@ -1841,7 +1861,7 @@ function sendClientRequest() {
     }
 
     if (availableCompanies.length === 0) {
-        showClientError('Selected time is no longer available. Please pick another slot.');
+        showClientError('Geselecteerde tijd is niet meer beschikbaar. Kies een ander tijdslot.');
         return;
     }
 
@@ -2453,11 +2473,11 @@ function renderDayDetails(dateKey) {
 
                 const customer = document.createElement('div');
                 customer.className = 'appointment-customer';
-                customer.textContent = appt.customerName || 'Unknown Customer';
+                customer.textContent = appt.customerName || 'Onbekende Klant';
 
                 const status = document.createElement('span');
                 status.className = `appointment-status ${appt.status.toLowerCase()}`;
-                status.textContent = appt.status === 'CONFIRMED' ? 'Confirmed' : 'Temporary Hold';
+                status.textContent = getStatusLabel(appt.status);
 
                 apptEl.appendChild(time);
                 apptEl.appendChild(customer);
