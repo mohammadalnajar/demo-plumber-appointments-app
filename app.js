@@ -15,28 +15,28 @@ const COMPANIES = [
 const SERVICES = [
     {
         id: 'S1',
-        name: 'Blockage / Verstopping',
+        name: 'Verstopping / Afvoer',
         type: 'EASY',
         durationSlots: 2, // 60m
         base: 95,
         questions: [
             {
                 key: 'location',
-                label: 'Location',
+                label: 'Locatie',
                 type: 'select',
-                options: ['Kitchen', 'Bathroom', 'Toilet']
+                options: ['Keuken', 'Badkamer', 'Toilet']
             },
             {
                 key: 'severity',
-                label: 'Severity',
+                label: 'Ernst',
                 type: 'select',
-                options: ['Slow drain', 'Fully blocked']
+                options: ['Langzaam afvoeren', 'Volledig verstopt']
             },
-            { key: 'afterHours', label: 'After-hours?', type: 'boolean' }
+            { key: 'afterHours', label: 'Buiten kantooruren?', type: 'boolean' }
         ],
         price: (ans) => {
             let p = 95; // base
-            if (ans.severity === 'Fully blocked') p += 40;
+            if (ans.severity === 'Volledig verstopt') p += 40;
             if (ans.location === 'Toilet') p += 20;
             if (ans.afterHours === true) p += 60;
             return p;
@@ -44,14 +44,14 @@ const SERVICES = [
     },
     {
         id: 'S2',
-        name: 'Bathroom Renovation (Quotation)',
+        name: 'Badkamer Renovatie (Offerte)',
         type: 'COMPLEX',
         durationSlots: 4, // 2h site visit slot (demo)
         base: 0,
         questions: [
-            { key: 'area', label: 'Approx. bathroom size (m²)', type: 'number' },
-            { key: 'shower', label: 'Shower?', type: 'boolean' },
-            { key: 'bathtub', label: 'Bathtub?', type: 'boolean' }
+            { key: 'area', label: 'Geschatte badkamergrootte (m²)', type: 'number' },
+            { key: 'shower', label: 'Douche?', type: 'boolean' },
+            { key: 'bathtub', label: 'Ligbad?', type: 'boolean' }
         ],
         price: (ans) => null // quotation
     }
@@ -80,18 +80,18 @@ function hhmmToMinutes(hhmm) {
 
 // Timer utility functions
 function formatTimeRemaining(milliseconds) {
-    if (milliseconds <= 0) return 'Expired';
+    if (milliseconds <= 0) return 'Verlopen';
 
     const hours = Math.floor(milliseconds / (60 * 60 * 1000));
     const minutes = Math.floor((milliseconds % (60 * 60 * 1000)) / (60 * 1000));
     const seconds = Math.floor((milliseconds % (60 * 1000)) / 1000);
 
     if (hours > 0) {
-        return `${hours}h ${minutes}m left`;
+        return `${hours}u ${minutes}m over`;
     } else if (minutes > 0) {
-        return `${minutes}m ${seconds}s left`;
+        return `${minutes}m ${seconds}s over`;
     } else {
-        return `${seconds}s left`;
+        return `${seconds}s over`;
     }
 }
 
@@ -124,15 +124,15 @@ function cleanupExpiredAppointments() {
             hasExpired = true;
 
             // Send expiry notification email
-            const subj = `Your temporary reservation has expired`;
-            const body = `<p>Unfortunately, your temporary appointment reservation has expired.</p>
-<p><strong>Company:</strong> ${appt.companyName}<br/>
-<strong>Date:</strong> ${appt.dateKey}<br/>
-<strong>Time:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
+            const subj = `Uw tijdelijke reservering is verlopen`;
+            const body = `<p>Helaas is uw tijdelijke afspraakregistratie verlopen.</p>
+<p><strong>Bedrijf:</strong> ${appt.companyName}<br/>
+<strong>Datum:</strong> ${appt.dateKey}<br/>
+<strong>Tijd:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
                 appt.endIdx * SLOT_MIN + WORK_START * 60
             )}</p>
-<p>The time slots are now available for other bookings. Please make a new request if you'd like to reschedule.</p>`;
-            pushEmail({ subj, body, apptId: null, to: appt.email || 'client@example.com' });
+<p>De tijdslots zijn nu beschikbaar voor andere boekingen. Maak alstublieft een nieuw verzoek aan als u wilt omboeken.</p>`;
+            pushEmail({ subj, body, apptId: null, to: appt.email || 'klant@voorbeeld.nl' });
         }
     }
 
@@ -253,14 +253,14 @@ function renderMonth() {
 
     const header = document.createElement('header');
     const prev = document.createElement('button');
-    prev.textContent = '‹ Prev';
+    prev.textContent = '‹ Vorige';
     prev.onclick = () => {
         state.monthCursor = new Date(year, month - 1, 1);
         renderMonth();
         saveState();
     };
     const next = document.createElement('button');
-    next.textContent = 'Next ›';
+    next.textContent = 'Volgende ›';
     next.onclick = () => {
         state.monthCursor = new Date(year, month + 1, 1);
         renderMonth();
@@ -273,7 +273,7 @@ function renderMonth() {
 
     const dow = document.createElement('div');
     dow.className = 'dow';
-    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((d) => {
+    ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'].forEach((d) => {
         const el = document.createElement('div');
         el.textContent = d;
         dow.appendChild(el);
@@ -635,11 +635,11 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
           window.open('mailto:${email}?subject=' + subject + '&body=' + body, '_blank');
         ">&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32"><path fill="#42a5f5" d="M28 6H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2m0 6l-12 6l-12-6V8l12 6l12-6Z"/></svg> Email</button>
         `
-                : '<span style="color: var(--sub); font-style: italic;">This appointment has been cancelled</span>'
+                : '<span style="color: var(--sub); font-style: italic;">Deze afspraak is geannuleerd</span>'
         }
         ${
             appt.status === 'CONFIRMED'
-                ? `<button class="btn btn-cancel" onclick="cancelAppointment(${info.apptId})" title="Cancel this appointment">🗑️ Cancel</button>`
+                ? `<button class="btn btn-cancel" onclick="cancelAppointment(${info.apptId})" title="Deze afspraak annuleren">🗑️ Annuleren</button>`
                 : ''
         }
       </div>
@@ -748,7 +748,7 @@ function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
                   <button class="btn primary" onclick="toggleSlotStatus('${dateKey}', ${slotIndex}, '${toggleTo}', this)">
                     ${actionEmoji} Set as ${toggleLabel}
                   </button>
-                  <button class="btn secondary popup-close">Cancel</button>
+                  <button class="btn secondary popup-close">Annuleren</button>
                 </div>
               </div>
             `;
@@ -952,7 +952,8 @@ function renderMail() {
     if (state.emails.length === 0) {
         const empty = document.createElement('div');
         empty.style.color = 'var(--sub)';
-        empty.textContent = 'No messages yet — create a temp appointment to send an email.';
+        empty.textContent =
+            'Nog geen berichten — maak een tijdelijke afspraak om een e-mail te versturen.';
         list.appendChild(empty);
         return;
     }
@@ -988,11 +989,11 @@ function renderMail() {
             actions.className = 'actions';
             const ok = document.createElement('button');
             ok.className = 'btn approve';
-            ok.textContent = 'Approve';
+            ok.textContent = 'Goedkeuren';
             ok.onclick = () => confirmAppointment(m.apptId);
             const rej = document.createElement('button');
             rej.className = 'btn reject';
-            rej.textContent = 'Reject';
+            rej.textContent = 'Afwijzen';
             rej.onclick = () => rejectAppointment(m.apptId);
             actions.append(ok, rej);
             card.appendChild(actions);
@@ -1013,13 +1014,13 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName,
     const slots = state.schedule[cId][dateKey];
     const startIdx = (hhmmToMinutes(startHHMM) - WORK_START * 60) / SLOT_MIN;
     const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
-    if (endIdx <= startIdx) return alert('Invalid time range');
+    if (endIdx <= startIdx) return alert('Ongeldig tijdsbereik');
     for (let i = startIdx; i < endIdx; i++) {
         if (slots[i] !== 'FREE') {
             if (slots[i] === 'UNAVAILABLE') {
-                return alert('Selected time slots are marked as unavailable');
+                return alert('Geselecteerde tijdslots zijn gemarkeerd als niet beschikbaar');
             }
-            return alert('Time slot not available');
+            return alert('Tijdslot niet beschikbaar');
         }
     }
     for (let i = startIdx; i < endIdx; i++) slots[i] = 'TEMP';
@@ -1047,18 +1048,18 @@ function createTempAppointment(dateKey, startHHMM, endHHMM, email, customerName,
     saveState();
 
     const timeRemaining = formatTimeRemaining(TEMP_HOLD_DURATION);
-    const subj = `Your appointment is temporarily reserved – please confirm within ${Math.floor(
+    const subj = `Uw afspraak is tijdelijk gereserveerd – bevestig binnen ${Math.floor(
         TEMP_HOLD_DURATION / (60 * 60 * 1000)
-    )} hours`;
-    const body = `<p>Thanks for your request.</p>
-<p><strong>Company:</strong> ${appt.companyName}<br/>
-<strong>Date:</strong> ${dateKey}<br/>
-<strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
-<p>This booking is <em>temporary</em> and will expire in <strong>${timeRemaining}</strong>. Please Approve or Reject below.</p>
-<p><em>⏰ You have ${Math.floor(
+    )} uur`;
+    const body = `<p>Bedankt voor uw verzoek.</p>
+<p><strong>Bedrijf:</strong> ${appt.companyName}<br/>
+<strong>Datum:</strong> ${dateKey}<br/>
+<strong>Tijd:</strong> ${startHHMM}–${endHHMM}</p>
+<p>Deze boeking is <em>tijdelijk</em> en verloopt over <strong>${timeRemaining}</strong>. Klik hieronder op Goedkeuren of Afwijzen.</p>
+<p><em>⏰ U heeft ${Math.floor(
         TEMP_HOLD_DURATION / (60 * 60 * 1000)
-    )} hours to respond before this reservation expires.</em></p>`;
-    pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
+    )} uur om te reageren voordat deze reservering verloopt.</em></p>`;
+    pushEmail({ subj, body, apptId: id, to: email || 'klant@voorbeeld.nl' });
     return id;
 }
 
@@ -1075,13 +1076,13 @@ function createFinalAppointment(
     const slots = state.schedule[cId][dateKey];
     const startIdx = (hhmmToMinutes(startHHMM) - WORK_START * 60) / SLOT_MIN;
     const endIdx = (hhmmToMinutes(endHHMM) - WORK_START * 60) / SLOT_MIN; // end boundary
-    if (endIdx <= startIdx) return alert('Invalid time range');
+    if (endIdx <= startIdx) return alert('Ongeldig tijdsbereik');
     for (let i = startIdx; i < endIdx; i++) {
         if (slots[i] !== 'FREE') {
             if (slots[i] === 'UNAVAILABLE') {
-                return alert('Selected time slots are marked as unavailable');
+                return alert('Geselecteerde tijdslots zijn gemarkeerd als niet beschikbaar');
             }
-            return alert('Time slot not available');
+            return alert('Tijdslot niet beschikbaar');
         }
     }
     for (let i = startIdx; i < endIdx; i++) slots[i] = 'BOOKED';
@@ -1094,8 +1095,8 @@ function createFinalAppointment(
         startIdx,
         endIdx,
         status: 'CONFIRMED',
-        email: email || 'client@example.com',
-        customerName: customerName || 'Unknown Client'
+        email: email || 'klant@voorbeeld.nl',
+        customerName: customerName || 'Onbekende Klant'
     };
     state.appts[id] = appt;
     renderDay();
@@ -1104,13 +1105,13 @@ function createFinalAppointment(
     refreshMultiCalendarIfActive();
     saveState();
 
-    const subj = `Your appointment is confirmed`;
-    const body = `<p>Your appointment has been confirmed!</p>
-<p><strong>Company:</strong> ${appt.companyName}<br/>
-<strong>Date:</strong> ${dateKey}<br/>
-<strong>Time:</strong> ${startHHMM}–${endHHMM}</p>
-<p>We look forward to seeing you.</p>`;
-    pushEmail({ subj, body, apptId: id, to: email || 'client@example.com' });
+    const subj = `Uw afspraak is bevestigd`;
+    const body = `<p>Uw afspraak is bevestigd!</p>
+<p><strong>Bedrijf:</strong> ${appt.companyName}<br/>
+<strong>Datum:</strong> ${dateKey}<br/>
+<strong>Tijd:</strong> ${startHHMM}–${endHHMM}</p>
+<p>We kijken ernaar uit u te zien.</p>`;
+    pushEmail({ subj, body, apptId: id, to: email || 'klant@voorbeeld.nl' });
     return id;
 }
 
@@ -1139,31 +1140,31 @@ function confirmAppointment(apptId) {
             appt.expiresAt = null; // Clear expiration
 
             // Send late confirmation email
-            const subj = `Your appointment is confirmed (late response accepted)`;
-            const body = `<p>Thank you for your response!</p>
-<p>Although your temporary reservation had expired, the time slots were still available and your appointment has been <strong>confirmed</strong>.</p>
-<p><strong>Company:</strong> ${appt.companyName}<br/>
-<strong>Date:</strong> ${appt.dateKey}<br/>
-<strong>Time:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
+            const subj = `Uw afspraak is bevestigd (late reactie geaccepteerd)`;
+            const body = `<p>Dank u voor uw reactie!</p>
+<p>Hoewel uw tijdelijke reservering was verlopen, waren de tijdslots nog steeds beschikbaar en is uw afspraak <strong>bevestigd</strong>.</p>
+<p><strong>Bedrijf:</strong> ${appt.companyName}<br/>
+<strong>Datum:</strong> ${appt.dateKey}<br/>
+<strong>Tijd:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
                 appt.endIdx * SLOT_MIN + WORK_START * 60
             )}</p>
-<p>We look forward to seeing you.</p>`;
+<p>We kijken ernaar uit u te zien.</p>`;
             pushEmail({ subj, body, apptId: null, to: appt.email });
         } else {
             // Slots are no longer available
             appt.status = 'EXPIRED_UNAVAILABLE';
 
             // Send unavailable email
-            const subj = `Unable to confirm expired reservation`;
-            const body = `<p>Unfortunately, we cannot confirm your appointment request.</p>
-<p>Your temporary reservation expired and the requested time slots have been booked by other customers.</p>
-<p><strong>Originally requested:</strong><br/>
-<strong>Company:</strong> ${appt.companyName}<br/>
-<strong>Date:</strong> ${appt.dateKey}<br/>
-<strong>Time:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
+            const subj = `Kan verlopen reservering niet bevestigen`;
+            const body = `<p>Helaas kunnen we uw afspraakverzoek niet bevestigen.</p>
+<p>Uw tijdelijke reservering is verlopen en de gevraagde tijdslots zijn door andere klanten geboekt.</p>
+<p><strong>Oorspronkelijk aangevraagd:</strong><br/>
+<strong>Bedrijf:</strong> ${appt.companyName}<br/>
+<strong>Datum:</strong> ${appt.dateKey}<br/>
+<strong>Tijd:</strong> ${minutesToHHMM(appt.startIdx * SLOT_MIN + WORK_START * 60)}–${minutesToHHMM(
                 appt.endIdx * SLOT_MIN + WORK_START * 60
             )}</p>
-<p>Please make a new booking request to see available alternatives.</p>`;
+<p>Maak alstublieft een nieuw boekingsverzoek om beschikbare alternatieven te zien.</p>`;
             pushEmail({ subj, body, apptId: null, to: appt.email });
         }
     } else {
@@ -1203,16 +1204,16 @@ function cancelAppointment(apptId) {
     if (!appt) return;
 
     // Show confirmation dialog
-    const customerName = appt.customerName || (appt.client ? appt.client.name : 'Unknown');
+    const customerName = appt.customerName || (appt.client ? appt.client.name : 'Onbekend');
     const startTime = minutesToHHMM(WORK_START * 60 + appt.startIdx * SLOT_MIN);
     const endTime = minutesToHHMM(WORK_START * 60 + appt.endIdx * SLOT_MIN);
 
     const confirmCancel = confirm(
-        `Are you sure you want to cancel this appointment?\n\n` +
-            `Customer: ${customerName}\n` +
-            `Date: ${appt.dateKey}\n` +
-            `Time: ${startTime} - ${endTime}\n\n` +
-            `This action cannot be undone.`
+        `Weet u zeker dat u deze afspraak wilt annuleren?\n\n` +
+            `Klant: ${customerName}\n` +
+            `Datum: ${appt.dateKey}\n` +
+            `Tijd: ${startTime} - ${endTime}\n\n` +
+            `Deze actie kan niet ongedaan worden gemaakt.`
     );
 
     if (!confirmCancel) return;
@@ -1227,15 +1228,15 @@ function cancelAppointment(apptId) {
     // Send cancellation email
     const email = appt.email || (appt.client ? appt.client.email : '');
     if (email && email.includes('@')) {
-        const subj = `Appointment Cancelled - ${appt.dateKey}`;
-        const body = `<p>Dear ${customerName},</p>
-<p>We regret to inform you that your appointment has been cancelled.</p>
-<p><strong>Company:</strong> ${appt.companyName || 'Plumber Service'}<br/>
-<strong>Date:</strong> ${appt.dateKey}<br/>
-<strong>Time:</strong> ${startTime}–${endTime}</p>
-<p>We apologize for any inconvenience this may cause. Please contact us to reschedule.</p>
-<p>Best regards,<br/>
-${appt.companyName || 'Plumber Service'}</p>`;
+        const subj = `Afspraak Geannuleerd - ${appt.dateKey}`;
+        const body = `<p>Beste ${customerName},</p>
+<p>We moeten u helaas meedelen dat uw afspraak is geannuleerd.</p>
+<p><strong>Bedrijf:</strong> ${appt.companyName || 'Loodgieterservice'}<br/>
+<strong>Datum:</strong> ${appt.dateKey}<br/>
+<strong>Tijd:</strong> ${startTime}–${endTime}</p>
+<p>We verontschuldigen ons voor het ongemak dat dit kan veroorzaken. Neem contact met ons op om opnieuw af te spreken.</p>
+<p>Met vriendelijke groet,<br/>
+${appt.companyName || 'Loodgieterservice'}</p>`;
         pushEmail({ subj, body, apptId, to: email });
     }
 
@@ -1261,7 +1262,7 @@ function renderRequests() {
     if (state.requests.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'note';
-        empty.textContent = 'No requests yet.';
+        empty.textContent = 'Nog geen verzoeken.';
         list.appendChild(empty);
         return;
     }
@@ -1304,7 +1305,7 @@ function renderRequests() {
         const companySelectDiv = document.createElement('div');
         companySelectDiv.style.marginBottom = '8px';
         const companyLabel = document.createElement('label');
-        companyLabel.textContent = 'Assign to Company: ';
+        companyLabel.textContent = 'Toewijzen aan Bedrijf: ';
         companyLabel.style.color = 'var(--sub)';
         companyLabel.style.fontSize = '12px';
         const companySelect = document.createElement('select');
@@ -1338,10 +1339,10 @@ function renderRequests() {
 
         const btnPropReq = document.createElement('button');
         btnPropReq.className = 'btn approve';
-        btnPropReq.textContent = 'Propose Requested Time';
+        btnPropReq.textContent = 'Gewenste Tijd Voorstellen';
         btnPropReq.onclick = () => {
             if (!req.preferred?.dateKey) {
-                alert('No preferred time selected by client.');
+                alert('Geen gewenste tijd geselecteerd door klant.');
                 return;
             }
             const selectedCompanyId = companySelect.value;
@@ -1413,7 +1414,7 @@ function renderRequests() {
 
         const btnProp = document.createElement('button');
         btnProp.className = 'btn';
-        btnProp.textContent = 'Propose Custom Time';
+        btnProp.textContent = 'Aangepaste Tijd Voorstellen';
         btnProp.onclick = () => {
             releaseHold(req);
             const selectedCompanyId = customCompanySelect.value;
@@ -1438,7 +1439,7 @@ function renderRequests() {
 
         const btnReject = document.createElement('button');
         btnReject.className = 'btn reject';
-        btnReject.textContent = 'Reject Request';
+        btnReject.textContent = 'Verzoek Afwijzen';
         btnReject.onclick = () => {
             releaseHold(req);
             req.status = 'REJECTED';
@@ -1455,7 +1456,7 @@ function renderRequests() {
         // Add Approve button for admin to confirm booking
         const btnApprove = document.createElement('button');
         btnApprove.className = 'btn approve';
-        btnApprove.textContent = 'Approve';
+        btnApprove.textContent = 'Goedkeuren';
         btnApprove.onclick = () => {
             // Book the spot for the client and create an appointment record
             if (req.hold) {
@@ -1596,7 +1597,7 @@ function createTempAppointmentFromHold(dateKey, startIdx, endIdx, email, company
 function populateServiceSelect() {
     const sel = document.getElementById('c_service');
     if (!sel) return;
-    sel.innerHTML = '<option value="">Select a service…</option>';
+    sel.innerHTML = '<option value="">Selecteer een service…</option>';
     SERVICES.forEach((s) => {
         const o = document.createElement('option');
         o.value = s.id;
@@ -1684,13 +1685,13 @@ function updateEstimate() {
     const el = document.getElementById('c_estimate');
     const service = SERVICES.find((s) => s.id === state.clientSelection.serviceId);
     if (!service) {
-        el.textContent = 'Select a service…';
+        el.textContent = 'Selecteer een service…';
         return;
     }
     const ans = collectAnswers();
     const price = service.price(ans);
     if (price == null) {
-        el.textContent = 'Quotation will be provided';
+        el.textContent = 'Offerte wordt verstrekt';
     } else {
         el.textContent = `~ €${price.toFixed(2)}`;
     }
@@ -1742,17 +1743,17 @@ function getFreeWindows(dateKey, durationSlots) {
 function clientFormErrors() {
     const errs = [];
     const name = document.getElementById('c_name').value.trim();
-    if (!name) errs.push('Enter your name.');
+    if (!name) errs.push('Voer uw naam in.');
     const email = document.getElementById('c_email').value.trim();
-    if (!emailValid(email)) errs.push('Enter a valid email.');
+    if (!emailValid(email)) errs.push('Voer een geldig e-mailadres in.');
     const serviceId = document.getElementById('c_service').value;
-    if (!serviceId) errs.push('Select a service.');
+    if (!serviceId) errs.push('Selecteer een service.');
     const qs = document.querySelectorAll('#c_questions [data-key]');
     qs.forEach((el) => {
         if (el.type === 'number') {
-            if (el.value === '') errs.push(`Fill ${el.dataset.key}.`);
+            if (el.value === '') errs.push(`Vul ${el.dataset.key} in.`);
         } else if (el.tagName === 'SELECT' || el.tagName === 'INPUT') {
-            if (el.value === '') errs.push(`Fill ${el.dataset.key}.`);
+            if (el.value === '') errs.push(`Vul ${el.dataset.key} in.`);
         }
     });
     return errs;
@@ -1781,7 +1782,7 @@ function renderClientTimes() {
     if (!service || !dateKey) return;
     const wins = getFreeWindows(dateKey, service.durationSlots);
     if (wins.length === 0) {
-        grid.innerHTML = '<div class="note">No free slots on this day.</div>';
+        grid.innerHTML = '<div class="note">Geen vrije tijdslots op deze dag.</div>';
         return;
     }
     wins.forEach((w, idx) => {
@@ -2407,7 +2408,7 @@ function renderDayDetails(dateKey) {
     if (visibleAppointments.length === 0) {
         const noAppts = document.createElement('div');
         noAppts.className = 'no-selection';
-        noAppts.textContent = 'No appointments for this day';
+        noAppts.textContent = 'Geen afspraken voor deze dag';
         appointmentsEl.appendChild(noAppts);
         return;
     }
@@ -2437,7 +2438,7 @@ function renderDayDetails(dateKey) {
         if (companyAppts.length === 0) {
             const noAppts = document.createElement('div');
             noAppts.className = 'no-appointments';
-            noAppts.textContent = 'No appointments';
+            noAppts.textContent = 'Geen afspraken';
             companySection.appendChild(noAppts);
         } else {
             companyAppts.forEach((appt) => {

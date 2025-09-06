@@ -1,21 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Plumber Scheduling – Demo</title>
+        <title>
+            Loodgieter Planni <div class="footer"> Selecteer een dag, kies begin/eind, en klik op
+            "Tijdelijke afspraak e-mail versturen". De e-mail verschijnt in de Mail Simulator →
+            klant Goedkeuren/Afwijzen werkt de kalender bij. </div>Demo
+        </title>
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
-        <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
-        <button id="theme-switcher" class="theme-switcher" aria-label="Toggle theme">🌙</button>
+        <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Zijbalk schakelen">☰</button>
+        <button id="theme-switcher" class="theme-switcher" aria-label="Thema schakelen">🌙</button>
         <div class="layout">
             <aside class="sidebar">
-                <div class="brand">🔧 Plumber Demo</div>
+                <div class="brand">🔧 Loodgieter Demo</div>
                 <div class="nav">
-                    <button id="nav-admin" class="active">Admin</button>
-                    <button id="nav-client">Client Booking</button>
-                    <button id="nav-multi-calendar">Multi-Company Calendar</button>
+                    <button id="nav-admin" class="active">Beheer</button>
+                    <button id="nav-client">Klant Boeken</button>
+                    <button id="nav-multi-calendar">Multi-Bedrijf Kalender</button>
                 </div>
 
                 <!-- Combined Calendar Overview -->
@@ -59,17 +63,17 @@
                 </div> -->
 
                 <p class="note" style="margin-top: 12px">
-                    State persists in your browser via <strong>localStorage</strong>.
+                    Status blijft bewaard in uw browser via <strong>localStorage</strong>.
                 </p>
                 <button id="btnClear" class="btn" style="margin-top: 12px; width: 100%">
-                    🧹 Clean data (reset)
+                    🧹 Data wissen (reset)
                 </button>
             </aside>
 
             <!-- ADMIN PAGE -->
             <main id="page-admin" class="page">
                 <section class="panel">
-                    <h2>Admin Dashboard – Calendar & Availability</h2>
+                    <h2>Beheerder Dashboard – Kalender & Beschikbaarheid</h2>
                     <div class="panel-body">
                         <div style="margin-bottom: 16px">
                             <label
@@ -81,7 +85,7 @@
                                     margin-bottom: 8px;
                                 "
                             >
-                                Select Company:
+                                Selecteer Bedrijf:
                             </label>
                             <select
                                 id="companySelect"
@@ -113,75 +117,75 @@
                                                 class="swatch"
                                                 style="background: var(--green)"
                                             ></span>
-                                            Free</span
+                                            Vrij</span
                                         >
                                         <span class="pill"
                                             ><span
                                                 class="swatch"
                                                 style="background: var(--gray)"
                                             ></span>
-                                            Temp (held)</span
+                                            Tijdelijk (vastgehouden)</span
                                         >
                                         <span class="pill"
                                             ><span
                                                 class="swatch"
                                                 style="background: var(--red)"
                                             ></span>
-                                            Booked</span
+                                            Geboekt</span
                                         >
                                         <span class="pill"
                                             ><span
                                                 class="swatch"
                                                 style="background: var(--yellow)"
                                             ></span>
-                                            Unavailable</span
+                                            Niet beschikbaar</span
                                         >
                                     </div>
                                     <div class="controls">
                                         <label>
-                                            Date:
+                                            Datum:
                                             <input type="date" id="datePicker" />
                                         </label>
                                         <label>
-                                            Start:
+                                            Begin:
                                             <select id="startTime"></select>
                                         </label>
                                         <label>
-                                            End:
+                                            Eind:
                                             <select id="endTime"></select>
                                         </label>
                                         <label>
-                                            Customer Name:
+                                            Klantnaam:
                                             <input
                                                 id="customerName"
                                                 type="text"
-                                                placeholder="John Doe"
+                                                placeholder="Jan Janssen"
                                             />
                                         </label>
                                         <label>
-                                            Client Email:
+                                            Klant E-mail:
                                             <input
                                                 id="clientEmail"
                                                 type="email"
-                                                placeholder="client@example.com"
+                                                placeholder="klant@voorbeeld.nl"
                                             />
                                         </label>
                                         <div class="controls-actions">
                                             <button id="btnHold" class="primary">
-                                                Send temp appointment email
+                                                Tijdelijke afspraak e-mail versturen
                                             </button>
                                             <button id="btnBookFinal" class="primary">
-                                                Book final appointment
+                                                Definitieve afspraak boeken
                                             </button>
                                             <button id="btnWeeklyAvailability" class="secondary">
-                                                📅 Weekly Availability
+                                                📅 Wekelijkse Beschikbaarheid
                                             </button>
                                             <button
                                                 id="btnResetDay"
                                                 class="secondary"
-                                                title="Clear day to all free"
+                                                title="Dag vrijmaken naar alles vrij"
                                             >
-                                                Reset day
+                                                Dag resetten
                                             </button>
                                         </div>
                                     </div>
@@ -199,19 +203,19 @@
                 </section>
 
                 <section class="panel">
-                    <h2>Mail Simulator (Client Inbox)</h2>
+                    <h2>Mail Simulator (Klant Inbox)</h2>
                     <div class="panel-body">
                         <div id="mailList" class="mail-list"></div>
                     </div>
                 </section>
 
                 <section class="panel">
-                    <h2>Incoming Booking Requests</h2>
+                    <h2>Inkomende Boekingsverzoeken</h2>
                     <div class="panel-body">
                         <div id="requestList" class="request-list"></div>
                         <div class="note">
-                            Requests are created from the Client Booking page. Propose a time to
-                            send a TEMP hold email, or reject.
+                            Verzoeken worden aangemaakt vanaf de Klant Boeken pagina. Stel een tijd
+                            voor om een tijdelijke vasthouding e-mail te versturen, of wijs af.
                         </div>
                     </div>
                 </section>
@@ -220,22 +224,22 @@
             <!-- CLIENT PAGE -->
             <main id="page-client" class="page" style="display: none">
                 <section class="panel">
-                    <h2>Client Booking – Choose Service & Time</h2>
+                    <h2>Klant Boeken – Kies Service & Tijd</h2>
                     <div class="panel-body">
                         <div id="c_error" class="error hidden" style="margin-bottom: 12px"></div>
                         <div class="client-grid">
                             <!-- Left: service & details -->
                             <div>
                                 <div class="field">
-                                    <label>Your name</label>
-                                    <input id="c_name" placeholder="Jane Doe" />
+                                    <label>Uw naam</label>
+                                    <input id="c_name" placeholder="Jan Janssen" />
                                 </div>
                                 <div class="field">
-                                    <label>Your email</label>
+                                    <label>Uw e-mail</label>
                                     <input
                                         id="c_email"
                                         type="email"
-                                        placeholder="jane@example.com"
+                                        placeholder="jan@voorbeeld.nl"
                                     />
                                 </div>
                                 <div class="field">
@@ -245,27 +249,27 @@
                                 <div id="c_questions"></div>
 
                                 <div class="field">
-                                    <label>Estimated price</label>
-                                    <div id="c_estimate" class="tag">Select a service…</div>
+                                    <label>Geschatte prijs</label>
+                                    <div id="c_estimate" class="tag">Selecteer een service…</div>
                                 </div>
                             </div>
 
                             <!-- Right: time selection -->
                             <div id="client-right" class="hidden">
                                 <div class="field">
-                                    <label>Date</label>
+                                    <label>Datum</label>
                                     <input type="date" id="c_date" />
                                 </div>
                                 <div class="field">
-                                    <label>Available times (free slots only)</label>
+                                    <label>Beschikbare tijden (alleen vrije tijdslots)</label>
                                     <div id="c_times" class="timegrid"></div>
                                 </div>
                                 <div class="field">
-                                    <label>Selected time</label>
-                                    <div id="c_selected" class="tag">None</div>
+                                    <label>Geselecteerde tijd</label>
+                                    <div id="c_selected" class="tag">Geen</div>
                                 </div>
                                 <button id="c_send" class="btn" style="padding: 10px 14px">
-                                    Send Request
+                                    Verzoek Versturen
                                 </button>
                                 <div id="c_result" class="note" style="margin-top: 8px"></div>
                             </div>
@@ -277,16 +281,16 @@
             <!-- MULTI-COMPANY CALENDAR PAGE -->
             <main id="page-multi-calendar" class="page" style="display: none">
                 <section class="panel">
-                    <h2>📅 Multi-Company Calendar Dashboard</h2>
+                    <h2>📅 Multi-Bedrijf Kalender Dashboard</h2>
                     <div class="panel-body">
                         <div class="multi-calendar-header">
                             <div class="calendar-controls">
-                                <button id="mc-prev-month" class="nav-btn">‹ Previous</button>
+                                <button id="mc-prev-month" class="nav-btn">‹ Vorige</button>
                                 <h3 id="mc-month-title">September 2025</h3>
-                                <button id="mc-next-month" class="nav-btn">Next ›</button>
+                                <button id="mc-next-month" class="nav-btn">Volgende ›</button>
                             </div>
                             <div class="company-filters">
-                                <div class="filter-title">Show Companies:</div>
+                                <div class="filter-title">Toon Bedrijven:</div>
                                 <label class="company-filter">
                                     <input type="checkbox" id="filter-C1" checked />
                                     <span class="filter-color" style="background: #22c55e"></span>
@@ -307,13 +311,13 @@
 
                             <div class="day-details-panel">
                                 <div class="day-details-header">
-                                    <h4 id="selected-day-title">Select a day</h4>
+                                    <h4 id="selected-day-title">Selecteer een dag</h4>
                                     <div id="selected-day-summary" class="day-summary"></div>
                                 </div>
                                 <div id="day-appointments" class="appointments-list">
                                     <div class="no-selection">
-                                        Click on a calendar day to see appointments for all
-                                        companies
+                                        Klik op een kalenderdag om afspraken voor alle bedrijven te
+                                        zien
                                     </div>
                                 </div>
                             </div>
