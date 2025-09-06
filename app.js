@@ -7,9 +7,8 @@ const STORAGE_KEY = 'plumberDemoState_v5'; // Updated version for timer feature
 
 // Demo companies
 const COMPANIES = [
-    { id: 'C1', name: 'Quick Fix Plumbing', color: '#22c55e' },
-    { id: 'C2', name: 'Professional Drain Services', color: '#3b82f6' },
-    { id: 'C3', name: 'Emergency Plumbing 24/7', color: '#f59e0b' }
+    { id: 'C1', name: 'Loodgietersbedrijf Utrecht', color: '#22c55e' },
+    { id: 'C2', name: 'Loodgietersbedrijf AM', color: '#3b82f6' }
 ];
 
 // Demo services catalog
