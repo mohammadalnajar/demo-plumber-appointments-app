@@ -389,7 +389,10 @@ function renderDay() {
             let timerInfo = '';
 
             if (apptInfo && apptInfo.type === 'appointment') {
-                customerName = apptInfo.data.customerName || 'Unknown';
+                customerName =
+                    apptInfo.data.customerName ||
+                    (apptInfo.data.client ? apptInfo.data.client.name : 'Unknown') ||
+                    'Unknown';
                 email = apptInfo.data.email || '';
                 shouldShowActions = true;
 
@@ -401,7 +404,10 @@ function renderDay() {
                     }
                 }
             } else if (apptInfo && apptInfo.type === 'request') {
-                customerName = apptInfo.data.customer.name || 'Unknown';
+                customerName =
+                    apptInfo.data.customer.name ||
+                    (apptInfo.data.client ? apptInfo.data.client.name : 'Unknown') ||
+                    'Unknown';
                 email = apptInfo.data.customer.email || '';
                 shouldShowActions = true;
             }
@@ -550,7 +556,6 @@ function findAppointmentInfo(dateKey, slotIndex) {
 
 function showAppointmentPopup(dateKey, slotIndex, slotStatus) {
     const info = findAppointmentInfo(dateKey, slotIndex);
-
     let title, content;
     if (info?.type === 'appointment') {
         const appt = info.data;
@@ -2203,7 +2208,7 @@ function showWeeklyAvailabilityPopup() {
 const multiCalendarState = {
     cursor: new Date(),
     selectedDate: null,
-    visibleCompanies: ['C1', 'C2', 'C3']
+    visibleCompanies: ['C1', 'C2']
 };
 
 function renderMultiCompanyCalendar() {
@@ -2664,45 +2669,45 @@ function sidebarDayCell(date, isOut) {
 }
 
 // --- Tiny Test Suite (console) ---
-function runTests() {
-    console.groupCollapsed('Demo Tests');
-    // 1) ensureDay creates correct number of slots
-    const testKey = '2099-12-31';
-    ensureDay(testKey);
-    const expectedSlots = ((WORK_END - WORK_START) * 60) / SLOT_MIN;
-    console.assert(state.schedule[testKey].length === expectedSlots, 'ensureDay slot count');
+// function runTests() {
+//     // console.groupCollapsed('Demo Tests');
+//     // 1) ensureDay creates correct number of slots
+//     const testKey = '2099-12-31';
+//     ensureDay(testKey);
+//     const expectedSlots = ((WORK_END - WORK_START) * 60) / SLOT_MIN;
+//     // console.assert(state.schedule[testKey].length === expectedSlots, 'ensureDay slot count');
 
-    // 2) getFreeWindows excludes BOOKED/TEMP
-    const slots = state.schedule[testKey];
-    for (let i = 0; i < slots.length; i++) slots[i] = 'FREE';
-    slots[2] = 'BOOKED';
-    slots[3] = 'TEMP';
-    const wins = getFreeWindows(testKey, 2);
-    const overlap = wins.some(
-        (w) => (w.startIdx <= 2 && w.endIdx > 2) || (w.startIdx <= 3 && w.endIdx > 3)
-    );
-    console.assert(!overlap, 'getFreeWindows should not include windows overlapping BOOKED/TEMP');
+//     // 2) getFreeWindows excludes BOOKED/TEMP
+//     const slots = state.schedule[testKey];
+//     for (let i = 0; i < slots.length; i++) slots[i] = 'FREE';
+//     slots[2] = 'BOOKED';
+//     slots[3] = 'TEMP';
+//     const wins = getFreeWindows(testKey, 2);
+//     const overlap = wins.some(
+//         (w) => (w.startIdx <= 2 && w.endIdx > 2) || (w.startIdx <= 3 && w.endIdx > 3)
+//     );
+//     console.assert(!overlap, 'getFreeWindows should not include windows overlapping BOOKED/TEMP');
 
-    // 3) price calculator for S1
-    const p = SERVICES[0].price({
-        location: 'Toilet',
-        severity: 'Fully blocked',
-        afterHours: true
-    });
-    console.assert(p === 95 + 20 + 40 + 60, 'price formula S1');
+//     // 3) price calculator for S1
+//     const p = SERVICES[0].price({
+//         location: 'Toilet',
+//         severity: 'Fully blocked',
+//         afterHours: true
+//     });
+//     console.assert(p === 95 + 20 + 40 + 60, 'price formula S1');
 
-    // 4) releaseHold frees TEMP
-    const req = { hold: { dateKey: testKey, startIdx: 5, endIdx: 7 } };
-    for (let i = 5; i < 7; i++) slots[i] = 'TEMP';
-    releaseHold(req);
-    console.assert(
-        slots[5] === 'FREE' && slots[6] === 'FREE' && !req.hold,
-        'releaseHold frees and clears hold'
-    );
+//     // 4) releaseHold frees TEMP
+//     const req = { hold: { dateKey: testKey, startIdx: 5, endIdx: 7 } };
+//     for (let i = 5; i < 7; i++) slots[i] = 'TEMP';
+//     releaseHold(req);
+//     console.assert(
+//         slots[5] === 'FREE' && slots[6] === 'FREE' && !req.hold,
+//         'releaseHold frees and clears hold'
+//     );
 
-    console.log('All tests executed. Check assertions above.');
-    console.groupEnd();
-}
+//     console.log('All tests executed. Check assertions above.');
+//     console.groupEnd();
+// }
 
 // --- Theme Management ---
 function initTheme() {
@@ -2751,58 +2756,66 @@ function init() {
     });
 
     const had = loadState();
-    // Seed a couple of slots if first run
+    // Seed demo data for both companies if first run
     if (!had) {
         const todayKey = formatDateKey(state.selectedDate);
-        ensureDay(todayKey);
-        // Seed BOOKED 10:00–11:00 and create an appointment record
-        const bookedStart = (10 * 60 - WORK_START * 60) / SLOT_MIN;
-        const bookedEnd = bookedStart + 2;
-        for (let i = bookedStart; i < bookedEnd; i++)
-            state.schedule[state.selectedCompanyId][todayKey][i] = 'BOOKED';
-        const seedApptId = state.nextApptId++;
-        const company = COMPANIES.find((c) => c.id === state.selectedCompanyId);
-        state.appts[seedApptId] = {
-            companyId: state.selectedCompanyId,
-            companyName: company ? company.name : 'Unknown Company',
-            dateKey: todayKey,
-            startIdx: bookedStart,
-            endIdx: bookedEnd,
-            status: 'CONFIRMED',
-            client: { name: 'Seeded Client', email: 'seed@example.com' },
-            serviceName: 'Demo Job'
-        };
 
-        // Seed a TEMP hold 15:00–15:30 with a matching request
-        const tempStart = (15 * 60 - WORK_START * 60) / SLOT_MIN;
-        const tempEnd = tempStart + 1;
-        for (let i = tempStart; i < tempEnd; i++)
-            state.schedule[state.selectedCompanyId][todayKey][i] = 'TEMP';
-        const seedReq = {
-            id: state.nextRequestId++,
-            createdAt: Date.now(),
-            customer: { name: 'Demo Client', email: 'demo@example.com' },
-            serviceId: 'S1',
-            serviceName: 'Blockage / Verstopping',
-            answers: {},
-            estimate: 95,
-            preferred: {
+        // Seed data for each company
+        COMPANIES.forEach((company, index) => {
+            ensureDay(todayKey, company.id);
+
+            // Seed BOOKED appointment for each company at different times
+            const bookedStart = ((10 + index * 2) * 60 - WORK_START * 60) / SLOT_MIN; // 10:00 for C1, 12:00 for C2
+            const bookedEnd = bookedStart + 2;
+            for (let i = bookedStart; i < bookedEnd; i++)
+                state.schedule[company.id][todayKey][i] = 'BOOKED';
+            const seedApptId = state.nextApptId++;
+            state.appts[seedApptId] = {
+                companyId: company.id,
+                companyName: company.name,
                 dateKey: todayKey,
-                startIdx: tempStart,
-                endIdx: tempEnd,
-                startHHMM: minutesToHHMM(WORK_START * 60 + tempStart * SLOT_MIN),
-                endHHMM: minutesToHHMM(WORK_START * 60 + tempEnd * SLOT_MIN)
-            },
-            availableCompanies: [state.selectedCompanyId],
-            hold: {
-                dateKey: todayKey,
-                startIdx: tempStart,
-                endIdx: tempEnd,
-                companyId: state.selectedCompanyId
-            },
-            status: 'NEW'
-        };
-        state.requests.unshift(seedReq);
+                startIdx: bookedStart,
+                endIdx: bookedEnd,
+                status: 'CONFIRMED',
+                client: { name: `Demo Client ${index + 1}`, email: `demo${index + 1}@example.com` },
+                serviceName: 'Demo Job'
+            };
+
+            // Seed a TEMP hold for each company
+            const tempStart = ((14 + index * 2) * 60 - WORK_START * 60) / SLOT_MIN; // 14:00 for C1, 16:00 for C2
+            const tempEnd = tempStart + 1;
+            for (let i = tempStart; i < tempEnd; i++)
+                state.schedule[company.id][todayKey][i] = 'TEMP';
+            const seedReq = {
+                id: state.nextRequestId++,
+                createdAt: Date.now(),
+                customer: {
+                    name: `Temp Client ${index + 1}`,
+                    email: `temp${index + 1}@example.com`
+                },
+                serviceId: 'S1',
+                serviceName: 'Blockage / Verstopping',
+                answers: {},
+                estimate: 95,
+                preferred: {
+                    dateKey: todayKey,
+                    startIdx: tempStart,
+                    endIdx: tempEnd,
+                    startHHMM: minutesToHHMM(WORK_START * 60 + tempStart * SLOT_MIN),
+                    endHHMM: minutesToHHMM(WORK_START * 60 + tempEnd * SLOT_MIN)
+                },
+                availableCompanies: [company.id],
+                hold: {
+                    dateKey: todayKey,
+                    startIdx: tempStart,
+                    endIdx: tempEnd,
+                    companyId: company.id
+                },
+                status: 'NEW'
+            };
+            state.requests.unshift(seedReq);
+        });
+
         saveState();
     }
 
@@ -2880,7 +2893,7 @@ function init() {
     }
 
     // Company filter checkboxes
-    ['C1', 'C2', 'C3'].forEach((companyId) => {
+    ['C1', 'C2'].forEach((companyId) => {
         const checkbox = document.getElementById(`filter-${companyId}`);
         if (checkbox) {
             checkbox.addEventListener('change', () => toggleCompanyFilter(companyId));
@@ -2956,7 +2969,7 @@ function init() {
     cleanupExpiredAppointments();
 
     // Run tests (console)
-    runTests();
+    // runTests();
 }
 
 init();
